@@ -1,0 +1,32 @@
+name: ci
+
+# §149.4 — the push cadence: typecheck, build, and the unit / solver / build tiers.
+# The 200-run smoke sweep follows src/data/ rather than the commits, and the
+# release sweep runs twice in the project's life. Both live in separate workflows.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push-tier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: typecheck
+        run: npm run typecheck
+      - name: build (web)
+        run: npm run build
+      - name: tests — unit, solver, build tiers
+        run: npm test
