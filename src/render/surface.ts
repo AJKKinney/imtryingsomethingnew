@@ -17,6 +17,16 @@ export interface Surface {
   lineTo(x: number, y: number): void
   stroke(): void
   setStroke(colour: string, width: number): void
+  /**
+   * §85.2 — heat is **the cell's fill**, so the board needs a filled rectangle and
+   * the interface did not have one. It is the second of the board's seven channels
+   * and the one §134.2 corrected: the fill renders the DERIVED region heat, the 3x3
+   * sum every threshold is tested against, rather than the per-cell scalar it is
+   * summed from — which is what makes the region, the seam, a corner's clipped
+   * window and the overclocked contour draw themselves with no eighth channel.
+   */
+  setFill(colour: string): void
+  fillRect(x: number, y: number, w: number, h: number): void
   /** The only text path in the game: a blit of a pre-rendered glyph or label. */
   blit(source: Surface, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number): void
   /** Draw calls issued since the last reset — §39.3 gates on this directly. */

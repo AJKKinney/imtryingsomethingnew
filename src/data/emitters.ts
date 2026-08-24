@@ -163,6 +163,13 @@ export const LEVEL_4_HEAT = 1
 
 export interface Amplifier {
   readonly id: AmplifierId
+  /**
+   * §8.2 puts every amplifier at one cell, and the field was implied rather than
+   * stated until `grid/board.ts` had to ask. It is stated because §34.1's packing
+   * problem is a property of SHAPES: a component whose footprint the board layer has
+   * to special-case is a component outside the puzzle.
+   */
+  readonly shape: Shape
   readonly draw: number
   /** §59.3 — a damage multiplier is thermally free per shot, so the price sits on
    *  the amplifier. Without it Gain is best in 21 of 21 cases (§59.1). */
@@ -173,17 +180,17 @@ export interface Amplifier {
 
 export const AMPLIFIERS: Readonly<Record<AmplifierId, Amplifier>> = Object.freeze({
   gain: {
-    id: 'gain', draw: 1, selfHeat: '0.5 + 0.5 x adjacent emitters',
+    id: 'gain', shape: SHAPE_SINGLE, draw: 1, selfHeat: '0.5 + 0.5 x adjacent emitters',
     effect: '+40 -> 60% damage to orthogonally adjacent emitters',
     gates: ['railgun', 'storm', 'shockwave'],
   },
   clock: {
-    id: 'clock', draw: 1, selfHeat: '+1 flat',
+    id: 'clock', shape: SHAPE_SINGLE, draw: 1, selfHeat: '+1 flat',
     effect: '+60 -> 80% rate; raises the emitter own heat and drives the region toward overclock',
     gates: ['cascade', 'halo'],
   },
   focus: {
-    id: 'focus', draw: 1, selfHeat: '+1 flat',
+    id: 'focus', shape: SHAPE_SINGLE, draw: 1, selfHeat: '+1 flat',
     effect: '+50 -> 70% area, AoE emitters only',
     gates: ['cluster', 'minefield'],
   },
@@ -192,7 +199,7 @@ export const AMPLIFIERS: Readonly<Record<AmplifierId, Amplifier>> = Object.freez
   // its condition was set by the crowd rather than by the build. Keyed on region
   // occupancy it stacks with overclock and simply pays less the tighter you pack.
   governor: {
-    id: 'governor', draw: 1, selfHeat: '0.5 + 0.5 x adjacent emitters',
+    id: 'governor', shape: SHAPE_SINGLE, draw: 1, selfHeat: '0.5 + 0.5 x adjacent emitters',
     effect: '+140 -> 210% damage, minus 40 -> 55 points per additional emitter sharing that region, floored at zero',
     gates: ['bastion', 'lathe', 'crucible'],
   },

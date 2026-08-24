@@ -73,6 +73,11 @@ export const canvas2d = (canvas: CanvasLike, background: string): Canvas2DSurfac
     lineTo(x, y) { ctx.lineTo(x, y) },
     stroke() { ctx.stroke(); surface.draws++ },
     setStroke(colour, width) { ctx.strokeStyle = colour; ctx.lineWidth = width },
+    // A state change, not a draw: setting a colour costs nothing against §39.3's
+    // ceiling and counting it would make the budget a function of how the caller
+    // batches rather than of what reaches the screen.
+    setFill(colour) { ctx.fillStyle = colour },
+    fillRect(x, y, w, h) { ctx.fillRect(x, y, w, h); surface.draws++ },
     blit(source, sx, sy, sw, sh, dx, dy) {
       const from = source as Canvas2DSurface
       ctx.drawImage(from.canvas, sx, sy, sw, sh, dx, dy, sw, sh)

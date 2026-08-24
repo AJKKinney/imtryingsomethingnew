@@ -18,26 +18,39 @@ that writes outside its region fails CI in the same breath as a hand edit inside
 
 ## IN PROGRESS:
 
-Nothing. **Commit 9 landed green**: the eight canonical documents, their four generators,
-and the sentinel check that keeps them honest in both directions.
+Nothing. **Commit 10 landed green**: the board — grid, 0-1 BFS power, region heat rendered
+as the **derived** 3×3 sum (§134.2), placement, §112.2's move verb, scrapping, §69.3's
+inspect mode, §76.2's causal juice, a gamepad cell cursor, and §115.5's engagement slider —
+shipped as **§82.2's one link with two tabs**.
 
-Three of the five new checks found something on the day they were written, which is the
-only evidence worth having that a check is real. **A-044** found a screen title and the
-prose inside it sharing one id — the cheapest possible demonstration that §102.2's
-boundary is checkable rather than rhetorical. **A-014** found the laws, the decisions,
-the schedule and the asset manifest riding into the web bundle for **58 KB**, in a build
-whose whole argument is that it loads in a second. And chasing that found §148.4's build
-manifest inside §16's content hash — which would have given the same daily seed a
-different fingerprint on web and on Steam, failing §119.8's fairness check on two runs
-that agree.
+**The two tabs share one board object**, and that is the whole demonstration: the RUN tab
+drives its engagement from the crowd inside §51.3's own 120 u circle, the WORKBENCH tab
+drives it from your hand, and the machine on both sides is the same machine. §51.1's
+property — *a fixed board heats up as the run escalates with no scaling rule anywhere* — is
+visible in ten seconds rather than in twenty minutes, which is why §81.3 calls the slider a
+**better instrument for §9's question than combat is**, not a substitute for it.
 
-**Next: commit 10 — the board.** Grid, 0-1 BFS power, region heat rendered as the derived
-3×3 sum (§134.2), placement, the move verb (§112.2), scrapping, inspect mode, causal
-placement juice, gamepad cursor, and an engagement slider in place of enemies — shipped as
-a playable link. **§9's gate runs there**, at session 3 rather than session 5–7 (§81.3):
-four qualitative criteria (§82.1), twenty minutes with the board and four questions rather
-than eight runs (§82.3), and §73.2's calibration set asked *before* it so the result can be
-read correctly.
+**Four findings, all from checks written the same day.** A single heat scalar per component
+breaks §111.2's exactness for a multi-cell component straddling a window, so `Placement.heat`
+is an array indexed by the shape's own offsets. §111.2's *Δ × shared ÷ 9* is the **uniform**
+case rather than the rule — proportional is the mechanism, because the clamp at zero forces
+it — and asserting the ninths would have failed §133.1's clipped corner in the same file
+that exists to protect it. §135.1D's *zero power is reachable by exactly one path* undercounts:
+**an unrouted island is the second**, it stays legal deliberately, and §85.2 makes it the
+loudest thing on the board because an island has no trace at all. And §101.6's registry
+modelled one of §101.3's three entry points, leaving `recovery` and `shareLanding` reachable
+from nowhere.
+
+**One check the build itself made.** `grid/heat` declared step 16 before the board was in the
+world, and the generator wired it into a loop that imported a `step()` nobody had written. A
+`STEP` declaration is a **claim to be wired**, so `tools/emit.ts` now refuses one it cannot
+honour and `gen/loop`'s PENDING list is the honest record until the board joins the world.
+
+**Next: §9's gate**, at session 3 rather than session 5–7 (§81.3) — four qualitative criteria
+(§82.1), twenty minutes with the board and four questions rather than eight runs (§82.3), and
+§73.2's calibration set asked *before* it so the result can be read correctly. Then commit 11
+and phase 2: the free tray, auto-placement's `AUTO` tag and its ten-second undo, §103.2's
+offer cards, and the board wired into the world at steps 4, 5 and 16.
 
 *A session that must stop mid-slice replaces this block with the files it touched and the
 invariant currently broken. A session that ends silently mid-change leaves the next one
@@ -86,12 +99,12 @@ the fight's only end condition, and a competent player never learns it exists.
 
 ```
 phase 1: 22/23 implemented · 23 planned (seeded)
-phase 2: 0/25 implemented · 41 planned (25 seeded)
+phase 2: 17/28 implemented · 41 planned (28 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   22/48 implemented · 268 planned
+total:   39/51 implemented · 268 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -264,6 +277,14 @@ Measured, not asserted — every figure below is a number this repository prints
   a system cannot be added without choosing a step.
 - **The bundle carries zero font bytes and zero asset bytes** (§139.1, §140.2): the 7×9
   stroke face is emitted at build time by the tool that bakes §14's sine table.
+- **The board draws the derived field, and the picture is the predicate** (§134.2): the
+  cells filled at or above the overclock tint are *exactly* the cells the simulation
+  reports overclocked, checked against a counting stub rather than a browser. The two
+  readings are both called "heat" and both are in §15, which is why no cross-reference
+  could have caught it.
+- **The bezel board holds §86.2's fifty-draw allowance** and the `TAB` view costs more,
+  measured through the same stub — because §96.3 found both render profiles over ceiling
+  from the pass that wrote them, and the counts were estimates.
 - **`dependencies` is empty and CI fails if it is not.**
 
 ## What is a prior, and says so

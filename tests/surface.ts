@@ -13,17 +13,22 @@ export interface StubSurface extends Surface {
   /** Every segment issued, so a glyph's geometry can be asserted without a canvas. */
   readonly segments: number[]
   paths: number
+  /** Every fill issued as `x, y, w, h, colour`, so §85.2's cell fills are checkable. */
+  readonly fills: (number | string)[]
 }
 
 export const stubSurface = (width: number, height: number): StubSurface => {
+  let fill = ''
   const s: StubSurface = {
     width,
     height,
     segments: [],
+    fills: [],
     paths: 0,
     draws: 0,
     clear() {
       s.segments.length = 0
+      s.fills.length = 0
       s.paths = 0
     },
     beginPath() {
@@ -40,6 +45,13 @@ export const stubSurface = (width: number, height: number): StubSurface => {
     },
     setStroke() {
       /* colour and width do not change the count */
+    },
+    setFill(colour) {
+      fill = colour
+    },
+    fillRect(x, y, w, h) {
+      s.fills.push(x, y, w, h, fill)
+      s.draws++
     },
     blit() {
       s.draws++

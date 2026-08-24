@@ -16,6 +16,7 @@ import { advance, clock, resume } from './gen/loop.ts'
 import { createWorld, type World } from './core/world.ts'
 import { contentHash } from './core/content.ts'
 import { copyWorld, restore, SNAPSHOT_VERSION } from './core/snapshot.ts'
+import { DT, MAX_CATCHUP_TICKS, TICK_MS } from './core/tick.ts'
 import { canvas2d, type CanvasLike } from './render/canvas2d.ts'
 import { buildAtlas, LABEL_SCALE } from './render/atlas.ts'
 import { buildBezel, drawBezel, DECK_BEZEL_HEIGHT } from './render/bezel.ts'
@@ -23,6 +24,11 @@ import { camera } from './render/camera.ts'
 import { PLAY_HEIGHT, PLAY_WIDTH } from './render/camera.ts'
 import { renderFrame } from './render/renderer.ts'
 import { BACKGROUND } from './gen/palette.ts'
+import { BOARD_TILE } from './render/bezel.ts'
+import { drawBoard, frameOf, type BoardView } from './render/boardview.ts'
+import {
+  apply, createPrototype, drawPrototype, engagementOf, tick as tickBoard, type Command,
+} from './ui/prototype.ts'
 import type { Surface } from './render/surface.ts'
 
 declare const __MELTLINE_TARGET__: string
@@ -115,13 +121,149 @@ const boot = (): void => {
   // catches up — §3.B: fast-forwarding through a lid-close is a death nobody saw.
   window.addEventListener('keydown', () => { if (world.paused) resume(c, world) })
 
+  // §82.2 — ONE board, two tabs. The RUN tab and the WORKBENCH tab share this
+  // object, so the difference between them is not the machine but WHAT DRIVES ITS
+  // ENGAGEMENT: the crowd, or your hand. That is the whole demonstration §51.2 is
+  // owed — heat tracks the war rather than the layout — and it costs a tab rather
+  // than a second prototype.
+  const proto = createPrototype()
+
+  // §85.3's two levels of detail. The bezel view is a STATUS LIGHT — fill, region
+  // heat and trace width, at §83.2's measured 72x72 — and the `TAB` view is an
+  // INSTRUMENT. A 14.4 px cell cannot carry a glyph, and that is the right division
+  // rather than a compromise.
+  const bezelBoard: BoardView = {
+    x: PLAY_WIDTH - BOARD_TILE - 8, y: PLAY_HEIGHT + 4, cell: BOARD_TILE / 5, detail: 'bezel',
+  }
+  const workbench = {
+    view: { x: 56, y: 56, cell: 48, detail: 'full' } as BoardView,
+    panelX: 340, panelY: 80, scale: LABEL_SCALE,
+  }
+
+  let tab: 'run' | 'workbench' = 'run'
+  const tabs: readonly [string, 'run' | 'workbench'][] = [
+    ['tab-run', 'run'], ['tab-workbench', 'workbench'],
+  ]
+  const showTab = (next: 'run' | 'workbench'): void => {
+    tab = next
+    // §121.4 — a board OPEN is a board decision. §2.4's floor counted opens alone and,
+    // multiplied against §9's 12-second ceiling, made the plan's stated success for
+    // its own differentiator 2.9% of a run; the gate now counts decisions.
+    if (next === 'workbench') proto.decisions++
+    for (const [id, which] of tabs) {
+      document.getElementById(id)?.setAttribute('aria-selected', String(which === next))
+    }
+  }
+  for (const [id, which] of tabs) {
+    document.getElementById(id)?.addEventListener('click', () => showTab(which))
+  }
+
+  /**
+   * §12's board bindings, and §3.G's snapping cell cursor.
+   *
+   * §101.3's grid-cursor idiom is one of exactly three, and no screen may invent a
+   * fourth — which is what makes gamepad completeness a property of the CONSTRUCTION
+   * rather than a test result, in a project whose primary venue is judged on it.
+   */
+  const BOARD_KEYS: Readonly<Record<string, Command>> = {
+    KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
+    KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
+    Enter: 'confirm', Space: 'confirm', KeyR: 'rotate', Backspace: 'scrap',
+    Escape: 'cancel', KeyQ: 'prevPart', KeyE: 'nextPart',
+    BracketRight: 'hotter', BracketLeft: 'cooler',
+  }
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Tab') {
+      // §9 — `TAB` opens the board, at 20% time, never paused. Here it is the tab it
+      // will become, so the binding a playtester learns at the gate is the one that
+      // survives into the game.
+      e.preventDefault()
+      showTab(tab === 'run' ? 'workbench' : 'run')
+      return
+    }
+    if (tab !== 'workbench') return
+    const command = BOARD_KEYS[e.code]
+    if (command !== undefined) { e.preventDefault(); apply(proto, command) }
+  })
+
+  /**
+   * The gamepad cursor — §81.2 lists it among the ten things the gate NEEDS, because
+   * §82.1's fourth criterion is that every cell and rotation be reachable on a pad
+   * without frustration, and §3 makes the handheld the primary venue.
+   *
+   * Read as EDGES rather than as states: a held stick is one move, not sixty. A
+   * repeat would make §121.4's decision count a function of how long a thumb rested.
+   */
+  const GAMEPAD: readonly (readonly [number, Command])[] = [
+    [12, 'up'], [13, 'down'], [14, 'left'], [15, 'right'],
+    [0, 'confirm'], [1, 'cancel'], [2, 'rotate'], [3, 'scrap'],
+    [4, 'prevPart'], [5, 'nextPart'], [6, 'cooler'], [7, 'hotter'],
+    [9, 'nextPart'],
+  ]
+  const wasPressed = new Set<number>()
+  const pollPad = (): void => {
+    const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []
+    const pad = [...pads].find((g) => g !== null)
+    if (pad === undefined || pad === null) return
+    for (const [button, command] of GAMEPAD) {
+      const down = pad.buttons[button]?.pressed === true
+      if (down && !wasPressed.has(button)) {
+        wasPressed.add(button)
+        if (tab === 'workbench') apply(proto, command)
+        else if (command === 'nextPart') showTab('workbench')
+      } else if (!down) wasPressed.delete(button)
+    }
+    // The stick, quantised to the same four commands. §3.G's cursor SNAPS: an analog
+    // axis that moved a cursor continuously would be a fourth idiom.
+    const [ax = 0, ay = 0] = [pad.axes[0] ?? 0, pad.axes[1] ?? 0]
+    const dead = 0.6
+    const stick: readonly (readonly [boolean, Command, number])[] = [
+      [ax < -dead, 'left', 100], [ax > dead, 'right', 101],
+      [ay < -dead, 'up', 102], [ay > dead, 'down', 103],
+    ]
+    for (const [active, command, slot] of stick) {
+      if (active && !wasPressed.has(slot)) {
+        wasPressed.add(slot)
+        if (tab === 'workbench') apply(proto, command)
+      } else if (!active) wasPressed.delete(slot)
+    }
+  }
+
+  // §142.4 — the board prototype has no world, so it carries its own accumulator on
+  // the same rule: the time-scale is a TICK GATE and the step never varies. §9 runs
+  // the board at 20% time, so the target interval is TICK_MS / 0.2 and the heat model
+  // advances by whole DT steps, exactly as it will when the loop wires it.
+  const BOARD_SCALE = 0.2
+  let boardAccumulator = 0
+
   let last = 0
   const frame = (now: number): void => {
     const dt = last === 0 ? 0 : now - last
     last = now
-    advance(c, world, dt)
-    renderFrame(stage, cam, world)
-    drawBezel(stage, atlas, bezel, world)
+    pollPad()
+    if (tab === 'run') {
+      const ran = advance(c, world, dt)
+      if (ran > 0) {
+        // §51.2's work term is a FIELD quantity, so the crowd sets the board's heat
+        // and the player's position sets the crowd (§108.5: position is a thermostat).
+        proto.engagement = engagementOf(world)
+        tickBoard(proto, ran * DT)
+      }
+      renderFrame(stage, cam, world)
+      drawBezel(stage, atlas, bezel, world)
+      drawBoard(stage, proto.board, bezelBoard, frameOf(proto.board))
+    } else {
+      const interval = TICK_MS / BOARD_SCALE
+      boardAccumulator += dt >= 1000 ? 0 : dt
+      let ran = 0
+      while (boardAccumulator >= interval && ran < MAX_CATCHUP_TICKS) {
+        boardAccumulator -= interval
+        tickBoard(proto, DT)
+        ran++
+      }
+      if (boardAccumulator >= interval) boardAccumulator = 0
+      drawPrototype(stage, atlas, proto, workbench)
+    }
     requestAnimationFrame(frame)
   }
   requestAnimationFrame(frame)

@@ -138,6 +138,14 @@ export const FACE_PACKED = ${JSON.stringify(base64)}
 const SIM_ROOTS = ['core', 'grid', 'game', 'ui', 'growth'] as const
 
 const DECLARES_STEP = /export const STEP = '([a-z]+)'/
+/**
+ * A `STEP` declaration is a claim to be WIRED, so the generator refuses one it cannot
+ * honour. §142.1 counted twenty-two tick-ordered behaviours added since §26 and found
+ * FOURTEEN with no step at all; the mirror of that failure is a step with no module —
+ * a declaration that reads as scheduled and generates an import of a `step` nobody
+ * wrote. The loop's PENDING list is where an unwired step belongs until it has one.
+ */
+const EXPORTS_STEP = /export const step\b|export function step\b/
 
 interface Declared {
   readonly id: string
@@ -158,8 +166,13 @@ const findSteps = (): Declared[] => {
       const path = join(dir, entry)
       if (statSync(path).isDirectory()) walk(path, `${prefix}/${entry}`)
       else if (entry.endsWith('.ts')) {
-        const match = DECLARES_STEP.exec(readFileSync(path, 'utf8'))
-        if (match?.[1] !== undefined) found.push({ id: match[1], from: `${prefix}/${entry}` })
+        const source = readFileSync(path, 'utf8')
+        const match = DECLARES_STEP.exec(source)
+        if (match?.[1] === undefined) continue
+        if (!EXPORTS_STEP.test(source)) {
+          throw new Error(`${prefix}/${entry} declares step '${match[1]}' and exports no step()`)
+        }
+        found.push({ id: match[1], from: `${prefix}/${entry}` })
       }
     }
   }

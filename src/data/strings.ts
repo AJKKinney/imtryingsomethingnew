@@ -151,6 +151,11 @@ export const LABELS: readonly Label[] = Object.freeze([
   label('hud', 'auto', 'AUTO'),
   label('hud', 'par', 'PAR'),
   label('hud', 'standing', 'STANDING'),
+  // §115.5 — the WORKSHOP's live slider, and §81.3's board prototype before it. The
+  // slider is not a stand-in for combat: it shows a placement's consequence across
+  // the whole run's thermal range in ten seconds, which no live run can do.
+  label('hud', 'engagement', 'ENGAGEMENT'),
+  label('hud', 'unrouted', 'UNROUTED'),
   // ── the verbs (§112.1 — the board's operational set, one label each)
   label('action', 'place', 'PLACE'),
   label('action', 'move', 'MOVE'),

@@ -5,11 +5,28 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>MELTLINE</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #05070a; overflow: hidden; }
-      canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+      html, body { margin: 0; height: 100%; background: #05070b; overflow: hidden; }
+      body { display: flex; flex-direction: column; }
+      /*
+        §82.2 — one link, two tabs. The tab bar is HOST chrome rather than a screen:
+        it sits outside the fixed 640x360 play area, it is not in §101.2's registry,
+        and it does not ship. §140.2's no-fillText rule is about a canvas frame under
+        load, so browser text here costs the budget nothing.
+      */
+      #tabs { display: flex; gap: 1px; background: #101a26; font: 11px ui-monospace, monospace; }
+      #tabs button {
+        flex: 1; padding: 6px 0; border: 0; cursor: pointer; letter-spacing: 0.18em;
+        background: #05070b; color: #3d5163;
+      }
+      #tabs button[aria-selected="true"] { background: #0b131c; color: #5ff2ff; }
+      #stage { flex: 1; min-height: 0; display: block; width: 100%; image-rendering: pixelated; }
     </style>
   </head>
   <body>
+    <div id="tabs" role="tablist">
+      <button id="tab-run" role="tab" aria-selected="true">RUN</button>
+      <button id="tab-workbench" role="tab" aria-selected="false">WORKBENCH</button>
+    </div>
     <canvas id="stage"></canvas>
     <script type="module" src="/src/main.ts"></script>
   </body>
