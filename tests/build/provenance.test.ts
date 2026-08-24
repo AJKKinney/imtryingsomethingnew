@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { MODEL_VERSION, PARTITIONS, type Axis } from '../../src/data/index.ts'
+import { DOCUMENTS } from '../../src/data/documents.ts'
 
 // A-004 · phase 1 · tier build · cadence push · source §96.6, §131.6, §61.5
 // why: §96 found four constants owned by three passes, each individually reviewed and
 // each wrong at the JOIN — a defect no per-constant column can see. The system tag is
 // what makes "a system is audited whole or not at all" enforceable rather than a wish.
 describe('A-004 · §131.6 every constant declares its provenance', () => {
-  for (const part of PARTITIONS) {
+  // Both registries: §63.3's rule is about where a constant LIVES, and the document
+  // sources are held out of the content hash rather than out of the discipline.
+  for (const part of [...PARTITIONS, ...DOCUMENTS]) {
     describe(part.name, () => {
       const exported = Object.keys(part.module).filter((k) => k !== 'provenance')
 

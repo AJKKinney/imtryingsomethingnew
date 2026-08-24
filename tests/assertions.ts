@@ -60,7 +60,14 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // Folding the second into the first by re-tiering A-015 would have been §92.2's
   // failure with a harness instead of a baseline: moving the thing being measured so
   // the measurement fits.
-  1: 18, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // 18 -> 23 at commit 9, and the increment is named rather than the total restated
+  // (§145.6): the eight documents brought five checks nothing else could make. String
+  // provenance and asset derivation are what make §18's disclosure position auditable
+  // rather than asserted; the decision index is §84.1's "a decision is not settled
+  // until it is indexed" turned into a build failure; the generated schedule is what
+  // stops §21's own arithmetic recurring; and the canonical-home budget is §135.4.
+  1: 23, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -106,7 +113,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-013', phase: 1, tier: 'build', cadence: 'push', source: '§140.2, §139.1', status: 'implemented',
       statement: 'The 7x9 stroke face is emitted at build time by the tool that bakes the sine table, and the bundle contains zero font bytes.',
       why: 'A system font stack makes the game read differently on every OS, breaking §85.2\'s visual language; a bundled webfont breaks §139.1\'s zero-asset-bytes claim. The generated face is the one that was always correct rather than merely cheapest.' }),
-  a({ id: 'A-014', phase: 1, tier: 'perf', cadence: 'push', source: '§139.1, §148.4', status: 'todo',
+  a({ id: 'A-014', phase: 1, tier: 'perf', cadence: 'push', source: '§139.1, §148.4', status: 'implemented',
       statement: 'The WEB bundle is under 700 KB uncompressed; the ceiling is stamped with its target.',
       why: 'Bundle size only ever creeps upward without a gate, and a game playable a second after the click converts better than one behind a loading bar. §102.5\'s 250 MB is the Steam budget and the two had never been compared.' }),
   a({ id: 'A-015', phase: 1, tier: 'e2e', cadence: 'push', source: '§46.2', status: 'todo',
@@ -202,6 +209,27 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
       quirk: true,
       statement: 'The shape grammar carries the faction in its FORM: every friendly silhouette is symmetric and closed, and no hostile one is either.',
       why: 'This is an ASYMMETRY rather than a value (§133.6), which is what a quirk needs: a session tidying the generator into one code path for both factions would leave every hue, every palette test and every screenshot passing, and would delete the only channel §46.2 has under tritanopia — the one CVD type the cyan/amber axis does not survive. In a screen holding 570 entities, telling your shots from theirs is a playability question, not a style one.' }),
+
+  // ──────────────────────────────────────────── phase 1, the eight documents (commit 9)
+  a({ id: 'A-044', phase: 1, tier: 'build', cadence: 'push', source: '§102.6, §102.2', status: 'implemented',
+      statement: 'Every player-visible string is on the label list or the human-written list, on exactly one, and each list is internally unique.',
+      why: '§18 rests the whole disclosure position on a split between functional strings and content, and never enumerated either side. §102.1 is why that is not bookkeeping: §18 exempted machine names because "players write them", while §47.4 auto-names every machine and §66.1 makes the shared name a procedural index — so the one category it exempted is the category players never write. A boundary nobody can check is a boundary that has already moved.' }),
+
+  a({ id: 'A-045', phase: 1, tier: 'build', cadence: 'push', source: '§140.6, §140.3', status: 'implemented',
+      statement: 'Every player-visible asset carries a derivation row generated from src/data/assets.ts, and every achievement names a source scene and a seed for both of its icons.',
+      why: 'Steamworks will not accept an achievement without TWO icons, achieved and unachieved, so §19\'s twenty were unshippable from pass 19 to pass 140 — and the sweep that found it is one line: typeface, achievement icon, library capsule and favicon appeared ZERO times in sixteen thousand lines. §18 was audited for a hundred and thirty-nine passes against the art INSIDE the simulation, which is the art the mechanics passes were interested in.' }),
+
+  a({ id: 'A-046', phase: 1, tier: 'build', cadence: 'push', source: '§84.1, §75.3', status: 'implemented',
+      statement: 'Every decision names a current owner citing a section, no two decisions claim the same topic, and the generated index lists every one.',
+      why: '§84.1 found the index 46% out of date eight passes after it was built and fixed the CAUSE rather than the contents: the index is the source, not a summary of one. A decision that is not here is not settled — which is the only thing that stops §75.1\'s eleven confidently-wrong answers recurring.' }),
+
+  a({ id: 'A-047', phase: 1, tier: 'build', cadence: 'push', source: '§145.6', status: 'implemented',
+      statement: 'The session totals are emitted from the per-item deliverable estimates; a hand-written total fails the build.',
+      why: '§21 stated 19-24 sessions while its own rows summed to 20-26, and twenty passes then added 7.3-10.6 sessions while declaring the total unchanged. Each judgment was defensible alone, which is the failure: an addition measured against the total never moves it, and "not a whole session" twenty times is seven to eleven sessions. §24.1 names shipping at all as the top risk, so the size of the ask has to be observable rather than reassuring.' }),
+
+  a({ id: 'A-048', phase: 1, tier: 'build', cadence: 'push', source: '§135.4, §75.2', status: 'implemented',
+      statement: 'Every canonical home declares a token ceiling, and one declared generated is actually emitted by a generator.',
+      why: '§135.4: a canonical home is a BUDGET, not just a location. Six homes were created to make something readable and none was re-measured; the resume set reached x5.3 its stated cost, with src/data/ alone three times the entire budget §63.4 wrote for it. A home that exceeds its ceiling is partitioned by its system tag, never trimmed, because §84.1 and §71.2 both make completeness the property that earns the file.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

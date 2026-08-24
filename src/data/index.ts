@@ -10,12 +10,11 @@ import * as enemies from './enemies.ts'
 import * as heat from './heat.ts'
 import * as player from './player.ts'
 import * as waves from './waves.ts'
-import * as builds from './builds.ts'
 import * as tickorder from './tickorder.ts'
 import type { ProvenanceRecord } from './meta.ts'
 
 export * from './meta.ts'
-export { cores, emitters, encounters, enemies, heat, player, waves, builds, tickorder }
+export { cores, emitters, encounters, enemies, heat, player, waves, tickorder }
 
 export interface Partition {
   readonly name: string
@@ -33,5 +32,15 @@ export const PARTITIONS: readonly Partition[] = Object.freeze([
   { name: 'waves', module: waves, provenance: waves.provenance },
   { name: 'encounters', module: encounters, provenance: encounters.provenance },
   { name: 'tickorder', module: tickorder, provenance: tickorder.provenance },
-  { name: 'builds', module: builds, provenance: builds.provenance },
 ])
+
+/**
+ * §148.4's build manifest is **not** here, and the reason is §80.2's promise rather
+ * than tidiness: web and Steam must play the identical daily, and §16's content hash
+ * is computed over this list. A flag matrix inside it would give the same seed a
+ * different hash on each product, which would fail §119.8's fairness check on two
+ * runs that are in fact identical — and it would put every target's flags, including
+ * the forbidden symbols naming them, into the shipped web bundle.
+ *
+ * It lives in `documents.ts` with the other build-time sources.
+ */

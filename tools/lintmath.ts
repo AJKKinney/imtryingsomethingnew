@@ -45,6 +45,20 @@ const ALLOW = /\/\/\s*lint-math-allow:/
 
 const MATH_MEMBER = /\bMath\.([A-Za-z0-9_]+)/g
 
+/**
+ * Removes string literals and trailing line comments, so the check reads CODE.
+ * Deliberately crude — it does not parse — because the failure mode of a crude
+ * stripper is a violation hidden inside a template expression, and a template
+ * expression that calls `Math.sin` in the simulation would also have to survive
+ * `tsc`, the step manifest and A-005's golden hash to reach a player.
+ */
+export const strip = (line: string): string =>
+  line
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/`(?:[^`\\$]|\\.|\$(?!\{))*`/g, '``')
+    .replace(/\/\/.*$/, '')
+
 export const scan = (file: string, source: string): Violation[] => {
   const found: Violation[] = []
   const lines = source.split('\n')
@@ -56,7 +70,14 @@ export const scan = (file: string, source: string): Violation[] => {
     // survive its own check.
     if (/^\s*(\/\/|\*|\/\*)/.test(line)) return
 
-    for (const [, member] of line.matchAll(MATH_MEMBER)) {
+    // And a STRING is not a call either. `src/data/laws.ts` states the rule verbatim
+    // and `src/data/decisions.ts` records the decision that established it — both in
+    // quoted prose, and both flagged by this check the moment those files existed.
+    // A lint that fires on a document describing the lint teaches a session to add
+    // exception comments, which is exactly how the rule stops meaning anything.
+    const code = strip(line)
+
+    for (const [, member] of code.matchAll(MATH_MEMBER)) {
       if (member === undefined || ALLOWED_MATH.has(member)) continue
       found.push({
         file, line: i + 1, text: line.trim(),
@@ -65,13 +86,13 @@ export const scan = (file: string, source: string): Violation[] => {
           : `Math.${member} is implementation-defined; use core/fixedmath.`,
       })
     }
-    if (/\*\*/.test(line) && !/\/\*\*/.test(line)) {
+    if (/\*\*/.test(code) && !/\/\*\*/.test(code)) {
       found.push({ file, line: i + 1, text: line.trim(), why: '** is Math.pow by another name.' })
     }
-    if (/\b(Date\.now|performance\.now)\b/.test(line)) {
+    if (/\b(Date\.now|performance\.now)\b/.test(code)) {
       found.push({ file, line: i + 1, text: line.trim(), why: 'Wall clock is an unrecorded input.' })
     }
-    if (/\bfor\s*\(\s*(const|let|var)\s+\w+\s+in\s/.test(line)) {
+    if (/\bfor\s*\(\s*(const|let|var)\s+\w+\s+in\s/.test(code)) {
       found.push({
         file, line: i + 1, text: line.trim(),
         why: 'Object key order is not part of the simulation; entities live in dense arrays.',
