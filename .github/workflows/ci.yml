@@ -24,6 +24,8 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - name: regenerate the appendix (§63.3 — drift fails the test below)
+        run: npm run gendocs
       - name: typecheck
         run: npm run typecheck
       - name: build (web)
