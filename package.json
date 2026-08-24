@@ -23,7 +23,8 @@
     "prebuild": "npm run emit --silent",
     "pretest": "npm run emit --silent",
     "predev": "npm run emit --silent",
-    "lint:steps": "node tools/lintsteps.ts"
+    "lint:steps": "node tools/lintsteps.ts",
+    "lint:text": "node tools/linttext.ts"
   },
   "dependencies": {},
   "devDependencies": {

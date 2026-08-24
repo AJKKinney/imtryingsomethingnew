@@ -59,6 +59,74 @@ ${rows.join('\n')}
 }
 
 /**
+ * §140.2's stroke face, packed.
+ *
+ * A node is `row * 7 + col` in 0..62, so six bits; a stroke is two nodes, so twelve.
+ * That is where §140.2's "63 addressable points at 6 bits, a stroke as 12 bits" comes
+ * from, and packing to it rather than to a convenient byte pair is what keeps §139.1's
+ * "zero asset bytes" a measured claim rather than a rounded one.
+ */
+export const packFace = (glyphs: Readonly<Record<string, readonly string[]>>): string => {
+  const chars = Object.keys(glyphs)
+  const nodes: number[] = []
+  const offsets: number[] = [0]
+
+  for (const ch of chars) {
+    for (const polyline of glyphs[ch] ?? []) {
+      const points = polyline.split(' ').filter((t) => t.length > 0).map((token) => {
+        const col = Number(token[0])
+        const row = Number(token[1])
+        if (!(col >= 0 && col < 7 && row >= 0 && row < 9)) {
+          throw new Error(`glyph '${ch}': '${token}' is off the 7x9 grid`)
+        }
+        return row * 7 + col
+      })
+      // A single point is a dot — the tittle on an i, a full stop — and is stored as
+      // a zero-length stroke rather than as a second concept.
+      if (points.length === 1) {
+        const only = points[0] ?? 0
+        nodes.push(only, only)
+        continue
+      }
+      for (let i = 0; i + 1 < points.length; i++) nodes.push(points[i] ?? 0, points[i + 1] ?? 0)
+    }
+    offsets.push(nodes.length / 2)
+  }
+
+  // Twelve bits per stroke, packed end to end.
+  const bytes: number[] = []
+  let acc = 0
+  let bits = 0
+  for (const node of nodes) {
+    acc = (acc << 6) | (node & 63)
+    bits += 6
+    while (bits >= 8) {
+      bits -= 8
+      bytes.push((acc >> bits) & 255)
+    }
+  }
+  if (bits > 0) bytes.push((acc << (8 - bits)) & 255)
+
+  const base64 = Buffer.from(Uint8Array.from(bytes)).toString('base64')
+  const strokes = nodes.length / 2
+
+  return `${BANNER}
+/** ${chars.length} glyphs, ${strokes} strokes, ${bytes.length} packed bytes (§140.2). */
+export const FACE_GLYPHS = ${chars.length}
+export const FACE_STROKE_COUNT = ${strokes}
+export const FACE_BYTES = ${bytes.length}
+
+export const FACE_CHARS = ${JSON.stringify(chars.join(''))}
+
+/** Start stroke index per glyph, plus a terminator. */
+export const FACE_OFFSETS: readonly number[] = Object.freeze(${JSON.stringify(offsets)})
+
+/** Six bits per node, two nodes per stroke, base64 of the packed stream. */
+export const FACE_PACKED = ${JSON.stringify(base64)}
+`
+}
+
+/**
  * §142.6 — `core/loop` is GENERATED from `src/data/tickorder.ts`, so a system cannot
  * be added without choosing a step, and §14's golden hash certifies the order the
  * manifest STATES rather than the order the code drifted into.
@@ -214,7 +282,9 @@ const emit = (name: string, contents: string): void => {
 
 if (import.meta.filename === process.argv[1]) {
   const { TICK_ORDER } = await import('../src/data/tickorder.ts')
+  const { GLYPHS } = await import('../src/data/glyphstrokes.ts')
   emit('sintable.ts', emitSinTable())
   emit('loop.ts', emitLoop(TICK_ORDER))
-  console.log(`emitted src/gen/sintable.ts (${SIN_TABLE_SIZE} entries) and src/gen/loop.ts`)
+  emit('strokefont.ts', packFace(GLYPHS))
+  console.log('emitted src/gen/{sintable,loop,strokefont}.ts')
 }

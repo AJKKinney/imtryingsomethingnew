@@ -95,7 +95,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-012', phase: 1, tier: 'build', cadence: 'push', source: '§142.6', status: 'implemented',
       statement: 'core/loop is generated from src/data/tickorder.ts, every simulation module declares a step index, and no module writes a simulation attribute from outside the step that declares it.',
       why: 'Ordering IS the simulation\'s semantics and a reordering is a silent desync. Twenty-two tick-ordered behaviours were added after §26 and fourteen had no step at all.' }),
-  a({ id: 'A-013', phase: 1, tier: 'build', cadence: 'push', source: '§140.2, §139.1', status: 'todo',
+  a({ id: 'A-013', phase: 1, tier: 'build', cadence: 'push', source: '§140.2, §139.1', status: 'implemented',
       statement: 'The 7x9 stroke face is emitted at build time by the tool that bakes the sine table, and the bundle contains zero font bytes.',
       why: 'A system font stack makes the game read differently on every OS, breaking §85.2\'s visual language; a bundled webfont breaks §139.1\'s zero-asset-bytes claim. The generated face is the one that was always correct rather than merely cheapest.' }),
   a({ id: 'A-014', phase: 1, tier: 'perf', cadence: 'push', source: '§139.1, §148.4', status: 'todo',
