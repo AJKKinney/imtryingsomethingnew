@@ -23,15 +23,37 @@ const walk = (dir: string): string[] =>
     return statSync(path).isDirectory() ? walk(path) : path.endsWith('.test.ts') ? [path] : []
   })
 
+/**
+ * A citation is an id in a `describe` or `it` TITLE, and nowhere else.
+ *
+ * The distinction is load-bearing rather than cosmetic. An id in a title is a claim
+ * that this test implements that assertion, and it carries into the test report and
+ * the CI log where a human reads it. An id in a comment is prose — one test here
+ * explains why the generator's single word of state matters by naming the snapshot
+ * assertion it would otherwise make unsatisfiable, which is a reference and not a
+ * claim to have done that work. Scanning the whole file conflates the two and marks
+ * work done that nobody did.
+ */
+const TITLE = /^\s*(?:describe|it|test)(?:\.\w+)?\s*\(\s*['"`](.*)$/
 const CITATION = /\bA-\d{3}\b/g
+
+const cited = (source: string): Set<string> => {
+  const ids = new Set<string>()
+  for (const line of source.split('\n')) {
+    const title = TITLE.exec(line)
+    if (title?.[1] === undefined) continue
+    for (const id of title[1].match(CITATION) ?? []) ids.add(id)
+  }
+  return ids
+}
 
 /** id -> the test files that cite it. */
 const citations = new Map<string, string[]>()
-// This file is scanned like any other: the only literal id in it is A-016 in the
-// suite title below. Every other id it handles is read from the manifest at runtime
-// or built from a template, so it cannot accidentally vouch for work nobody did.
+// This file is scanned like any other. The only id in a title here is A-016, below;
+// every other id it handles is read from the manifest at runtime or built from a
+// template, so it cannot accidentally vouch for work nobody did.
 for (const file of walk(TESTS)) {
-  for (const id of new Set(readFileSync(file, 'utf8').match(CITATION) ?? [])) {
+  for (const id of cited(readFileSync(file, 'utf8'))) {
     citations.set(id, [...(citations.get(id) ?? []), file.slice(TESTS.length)])
   }
 }
@@ -49,6 +71,16 @@ describe('A-016 · §71.2 the assertion manifest', () => {
     const unknown = [...citations].filter(([id]) => !known.has(id))
       .map(([id, files]) => `${id} cited by ${files.join(', ')}`)
     expect(unknown).toEqual([])
+  })
+
+  it('gives every test file an assertion to answer to', () => {
+    // The other half of §71.2's rule, and the half that is easy to leave out: a test
+    // with no assertion behind it is scope that arrived without a decision. Helper
+    // modules under tests/ are not test files and are not asked.
+    const uncited = walk(TESTS)
+      .filter((file) => cited(readFileSync(file, 'utf8')).size === 0)
+      .map((file) => file.slice(TESTS.length))
+    expect(uncited).toEqual([])
   })
 
   it('never lets a cited assertion stay marked todo', () => {

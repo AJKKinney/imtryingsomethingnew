@@ -27,7 +27,8 @@ export const RUNG = 3.0
 
 /** §15 — region = the 3x3 Chebyshev block centred on a cell, clipped at edges. */
 export const REGION_RADIUS = 1
-export const REGION_CELLS_MAX = (REGION_RADIUS * 2 + 1) ** 2  // 9
+const REGION_SIDE = REGION_RADIUS * 2 + 1
+export const REGION_CELLS_MAX = REGION_SIDE * REGION_SIDE  // 9
 
 export const provenance: ProvenanceRecord = {
   DISSIPATION_K: {

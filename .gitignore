@@ -5,3 +5,7 @@ coverage/
 .DS_Store
 test-results/
 playwright-report/
+
+# Generated code is never committed (§147.2): the readable artifact is the source,
+# and every typecheck, build and test re-emits first so a fresh clone cannot lack it.
+src/gen/
