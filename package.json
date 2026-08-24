@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "ci": "npm run gendocs && npm run typecheck && npm run build && npm run test",
-    "gendocs": "node tools/gendocs.ts"
+    "gendocs": "node tools/gendocs.ts",
+    "coverage": "node tools/coverage.ts"
   },
   "dependencies": {},
   "devDependencies": {

@@ -5,7 +5,7 @@ import { MODEL_VERSION, PARTITIONS, type Axis } from '../../src/data/index.ts'
 // why: §96 found four constants owned by three passes, each individually reviewed and
 // each wrong at the JOIN — a defect no per-constant column can see. The system tag is
 // what makes "a system is audited whole or not at all" enforceable rather than a wish.
-describe('§131.6 every constant declares its provenance', () => {
+describe('A-004 · §131.6 every constant declares its provenance', () => {
   for (const part of PARTITIONS) {
     describe(part.name, () => {
       const exported = Object.keys(part.module).filter((k) => k !== 'provenance')

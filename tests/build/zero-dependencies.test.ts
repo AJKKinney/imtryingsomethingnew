@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 // failure this is actually guarding against.
 const read = (p: string) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'))
 
-describe('§139.1 zero runtime dependencies', () => {
+describe('A-001 · §139.1 zero runtime dependencies', () => {
   const pkg = read('../../package.json')
   const lock = read('../../package-lock.json')
 
