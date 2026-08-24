@@ -47,7 +47,12 @@ export interface Assertion {
  * `phase N: implemented/planned` against them so coverage is never a guess.
  */
 export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
-  1: 16, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
+  // Phase 1 was 16 and is 17: §17 budgets five pre-allocated pools and states that
+  // none is grown during a run, and no seeded assertion held that. §145.6's law is
+  // that an addition is costed against the increment and the TOTAL is recomputed
+  // rather than restated, so the plan moved rather than the work being squeezed into
+  // a count that had no room for it.
+  1: 17, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -75,7 +80,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-007', phase: 1, tier: 'unit', cadence: 'push', source: '§14', status: 'implemented',
       statement: 'The seeded RNG reproduces a fixed golden sequence, and the baked sine table matches Math.sin within 1e-6.',
       why: 'The table is generated at BUILD time and emitted as source constants, so the shipped game never calls the implementation-defined function it approximates.' }),
-  a({ id: 'A-008', phase: 1, tier: 'unit', cadence: 'push', source: '§17', status: 'todo',
+  a({ id: 'A-008', phase: 1, tier: 'unit', cadence: 'push', source: '§17', status: 'implemented',
       statement: 'The spatial hash returns exactly what a brute-force neighbour query returns, for every seeded layout.',
       why: 'The hash is the largest single cost in the tick (§40.1) and the easiest place for an off-by-one to silently drop collisions, which reads as the game being unfair rather than as a bug.' }),
   a({ id: 'A-009', phase: 1, tier: 'unit', cadence: 'push', source: '§3.B, §9', status: 'todo',
@@ -87,7 +92,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-011', phase: 1, tier: 'unit', cadence: 'push', source: '§142.4', status: 'todo',
       statement: 'The time-scale is a tick gate: the golden hash is identical at 100%, 20%, 5% and paused.',
       why: 'Scaling dt makes the step variable, which makes the hash a function of frame timing and silently breaks replays, PAR and the daily. A gate at scale 0 is trivially zero ticks where a zero multiplier is a special case.' }),
-  a({ id: 'A-012', phase: 1, tier: 'build', cadence: 'push', source: '§142.6', status: 'todo',
+  a({ id: 'A-012', phase: 1, tier: 'build', cadence: 'push', source: '§142.6', status: 'implemented',
       statement: 'core/loop is generated from src/data/tickorder.ts, every simulation module declares a step index, and no module writes a simulation attribute from outside the step that declares it.',
       why: 'Ordering IS the simulation\'s semantics and a reordering is a silent desync. Twenty-two tick-ordered behaviours were added after §26 and fourteen had no step at all.' }),
   a({ id: 'A-013', phase: 1, tier: 'build', cadence: 'push', source: '§140.2, §139.1', status: 'todo',
@@ -179,6 +184,11 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-041', phase: 2, tier: 'unit', cadence: 'push', source: '§118.5', status: 'todo',
       statement: 'Every random draw is a weighted distribution object summing to 1, and no data table ships a range literal.',
       why: 'A range is a summary of a distribution. Three unspecified shapes in one system — "1 -> 8", "(1-5)", "Swarmers 0-3" — each read like a specification and each left the only part that matters to the implementer.' }),
+
+  // ───────────────────────────────────────────── phase 1, found while building it
+  a({ id: 'A-042', phase: 1, tier: 'unit', cadence: 'push', source: '§17', status: 'implemented',
+      statement: 'Every pool is allocated at boot and never grown during a run; a full pool refuses the spawn and counts the refusal.',
+      why: 'Growing a pool mid-run allocates, and allocating mid-run is a garbage-collection pause inside a 16.7 ms frame on the primary venue. §31.3 fixes concurrent enemies at 190-624 against a 2,048 pool, so a full pool means something upstream is wrong; the honest response is a dropped spawn and a counter the sweep can read.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

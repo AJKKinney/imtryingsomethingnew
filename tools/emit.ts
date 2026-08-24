@@ -16,7 +16,7 @@
  * and `src/gen/` is ignored. Every `npm run typecheck`, `build` and `test` re-emits
  * first, so a fresh clone cannot be missing it.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -58,6 +58,154 @@ ${rows.join('\n')}
 `
 }
 
+/**
+ * §142.6 — `core/loop` is GENERATED from `src/data/tickorder.ts`, so a system cannot
+ * be added without choosing a step, and §14's golden hash certifies the order the
+ * manifest STATES rather than the order the code drifted into.
+ *
+ * It lives under `src/gen/` rather than `src/core/` for one reason: `src/gen/` is the
+ * directory §147.2's ignore rule covers, and a single generated file sitting inside a
+ * hand-written directory is a generated file that eventually gets hand-edited.
+ */
+const SIM_ROOTS = ['core', 'grid', 'game', 'ui', 'growth'] as const
+
+const DECLARES_STEP = /export const STEP = '([a-z]+)'/
+
+interface Declared {
+  readonly id: string
+  /** Import specifier relative to src/gen/. */
+  readonly from: string
+}
+
+const findSteps = (): Declared[] => {
+  const found: Declared[] = []
+  const walk = (dir: string, prefix: string): void => {
+    let entries: string[]
+    try {
+      entries = readdirSync(dir)
+    } catch {
+      return // A system that does not exist yet declares no steps.
+    }
+    for (const entry of entries) {
+      const path = join(dir, entry)
+      if (statSync(path).isDirectory()) walk(path, `${prefix}/${entry}`)
+      else if (entry.endsWith('.ts')) {
+        const match = DECLARES_STEP.exec(readFileSync(path, 'utf8'))
+        if (match?.[1] !== undefined) found.push({ id: match[1], from: `${prefix}/${entry}` })
+      }
+    }
+  }
+  for (const root of SIM_ROOTS) walk(join(ROOT, 'src', root), `../${root}`)
+  return found
+}
+
+export const emitLoop = (order: readonly { index: number; id: string }[]): string => {
+  const declared = findSteps()
+
+  const seen = new Set<string>()
+  for (const d of declared) {
+    // Two modules claiming one step is an ordering the manifest does not express,
+    // which is exactly the silent desync §26 warns about.
+    if (seen.has(d.id)) throw new Error(`two modules declare step '${d.id}'`)
+    seen.add(d.id)
+    if (!order.some((s) => s.id === d.id)) {
+      throw new Error(`${d.from} declares step '${d.id}', which src/data/tickorder.ts does not contain`)
+    }
+  }
+
+  const wired = order
+    .filter((s) => seen.has(s.id))
+    .map((s) => {
+      const d = declared.find((x) => x.id === s.id)
+      if (d === undefined) throw new Error(`unreachable: ${s.id}`)
+      return { index: s.index, id: s.id, from: d.from }
+    })
+
+  const imports = wired.map((s) => `import { step as ${s.id} } from '${s.from}'`).join('\n')
+  const calls = wired.map((s) => `  ${s.id}(world) // step ${s.index}`).join('\n')
+  const pending = order.filter((s) => !seen.has(s.id) && s.id !== 'timescale' && s.id !== 'tickend')
+
+  return `${BANNER}
+import type { World } from '../core/world.ts'
+${imports}
+
+/** The step ids this loop wires, in manifest order. */
+export const WIRED: readonly string[] = ${JSON.stringify(wired.map((s) => s.id))}
+
+/**
+ * Steps the manifest declares and no module has claimed yet. Not a TODO list — it is
+ * what stops a half-built loop from looking finished, and it is generated, so it
+ * shrinks on its own as systems arrive.
+ */
+export const PENDING: readonly string[] = ${JSON.stringify(pending.map((s) => s.id))}
+
+/** Step 24 (\`tickend\`): tick++, so a component added this frame cannot fire this frame. */
+export const runTick = (world: World): void => {
+${calls}
+  world.tick++
+}
+
+/** §142.4 — the fixed step. 60 Hz, and never a function of frame timing. */
+export const TICK_MS = 1000 / 60
+
+/**
+ * The accumulator's clamp (§3.B). Handhelds get their lids closed constantly, and a
+ * clamp is the difference between resuming and fast-forwarding through the crush the
+ * player was in the middle of.
+ */
+export const MAX_CATCHUP_TICKS = 5
+
+/** A gap this long is not a hitch; §9 auto-pauses rather than simulating through it. */
+export const PAUSE_GAP_MS = 1000
+
+export interface Clock {
+  accumulator: number
+  /**
+   * §142.4 — the time-scale is a TICK GATE, so the target interval is
+   * \`TICK_MS / scale\`. 1 is real time, 0.2 is §9's board, 0 is §99.3's paused, and
+   * §149.3's harness runs it UPWARD at 50. Scaling \`dt\` instead would make §14's
+   * golden hash a function of frame timing, which is the desync §26 exists to prevent.
+   */
+  scale: number
+  /** Set when a gap exceeded PAUSE_GAP_MS. The caller decides what to show. */
+  gapDetected: boolean
+}
+
+export const clock = (scale = 1): Clock => ({ accumulator: 0, scale, gapDetected: false })
+
+/**
+ * Advance real time by \`dtMs\` and run whatever whole ticks that buys. Returns the
+ * number of ticks run, which is 0 at scale 0 by construction rather than by a branch.
+ */
+export const advance = (c: Clock, world: World, dtMs: number): number => {
+  c.gapDetected = false
+  if (dtMs >= PAUSE_GAP_MS) {
+    // §9: auto-pause on any gap over a second. The accumulator is discarded rather
+    // than clamped, because catching up through a lid-close is a death the player
+    // did not see.
+    c.gapDetected = true
+    c.accumulator = 0
+    return 0
+  }
+  if (c.scale <= 0) return 0
+  const interval = TICK_MS / c.scale
+  c.accumulator += dtMs
+  let ticks = 0
+  while (c.accumulator >= interval && ticks < MAX_CATCHUP_TICKS) {
+    c.accumulator -= interval
+    runTick(world)
+    ticks++
+  }
+  // The clamp is a COUNT, not a ceiling on the accumulator. Clamping the float
+  // instead measured four catch-up ticks where five were intended, because after
+  // four subtractions the remainder sat 8e-15 below one interval. A budget of ticks
+  // says what it means and cannot be eroded by the arithmetic it bounds.
+  if (c.accumulator >= interval) c.accumulator = 0
+  return ticks
+}
+`
+}
+
 const emit = (name: string, contents: string): void => {
   mkdirSync(GEN, { recursive: true })
   writeFileSync(join(GEN, name), contents)
@@ -65,6 +213,8 @@ const emit = (name: string, contents: string): void => {
 }
 
 if (import.meta.filename === process.argv[1]) {
+  const { TICK_ORDER } = await import('../src/data/tickorder.ts')
   emit('sintable.ts', emitSinTable())
-  console.log(`emitted src/gen/sintable.ts (${SIN_TABLE_SIZE} entries)`)
+  emit('loop.ts', emitLoop(TICK_ORDER))
+  console.log(`emitted src/gen/sintable.ts (${SIN_TABLE_SIZE} entries) and src/gen/loop.ts`)
 }

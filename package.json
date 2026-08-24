@@ -22,7 +22,8 @@
     "pretypecheck": "npm run emit --silent",
     "prebuild": "npm run emit --silent",
     "pretest": "npm run emit --silent",
-    "predev": "npm run emit --silent"
+    "predev": "npm run emit --silent",
+    "lint:steps": "node tools/lintsteps.ts"
   },
   "dependencies": {},
   "devDependencies": {

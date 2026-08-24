@@ -38,3 +38,46 @@ export const hashOf = (xs: Iterable<number>): string => {
   for (const x of xs) feed(s, x)
   return digest(s)
 }
+
+/**
+ * A fingerprint of one top-level world attribute.
+ *
+ * This is what lets `tests/unit/loop.test.ts` enforce §142.6's third clause — that no
+ * module writes a world attribute from outside the step that declares it — by
+ * BEHAVIOUR rather than by declaration. A textual lint cannot see a mutation through
+ * a reference (`const h = world.hash; h.count = 0`); a fingerprint taken around every
+ * step sees it every time.
+ */
+export const fingerprint = (value: unknown): string => {
+  const s = hasher()
+  const walk = (v: unknown, depth: number): void => {
+    if (depth > 6) return
+    if (typeof v === 'number') return feed(s, v)
+    if (typeof v === 'boolean') return feed(s, v ? 1 : 0)
+    if (typeof v === 'string') {
+      for (let i = 0; i < v.length; i++) feed(s, v.charCodeAt(i))
+      return
+    }
+    if (v === null || v === undefined) return feed(s, -0.5)
+    if (ArrayBuffer.isView(v)) {
+      const a = v as unknown as ArrayLike<number>
+      for (let i = 0; i < a.length; i++) feed(s, a[i] ?? 0)
+      return
+    }
+    if (Array.isArray(v)) {
+      feed(s, v.length)
+      for (const x of v) walk(x, depth + 1)
+      return
+    }
+    if (typeof v === 'object') {
+      // Sorted, so the fingerprint does not depend on property insertion order —
+      // the same reason `tools/gendocs.ts` sorts before it renders.
+      for (const key of Object.keys(v as object).sort()) {
+        for (let i = 0; i < key.length; i++) feed(s, key.charCodeAt(i))
+        walk((v as Record<string, unknown>)[key], depth + 1)
+      }
+    }
+  }
+  walk(value, 0)
+  return digest(s)
+}
