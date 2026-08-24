@@ -237,6 +237,12 @@ export interface Clock {
 
 export const clock = (scale = 1): Clock => ({ accumulator: 0, scale, gapDetected: false })
 
+/** Leave §9's auto-pause. The accumulator is already empty, so nothing catches up. */
+export const resume = (c: Clock, world: World): void => {
+  world.paused = false
+  c.accumulator = 0
+}
+
 /**
  * Advance real time by \`dtMs\` and run whatever whole ticks that buys. Returns the
  * number of ticks run, which is 0 at scale 0 by construction rather than by a branch.
@@ -249,9 +255,14 @@ export const advance = (c: Clock, world: World, dtMs: number): number => {
     // did not see.
     c.gapDetected = true
     c.accumulator = 0
+    // The pause is SIMULATION state, not host state (\`core/lifecycle\`): a pause
+    // driven from outside the world is an unrecorded input, and an unrecorded input
+    // is a replay that does not reproduce.
+    world.paused = true
+    world.resumeGap = 1
     return 0
   }
-  if (c.scale <= 0) return 0
+  if (world.paused || c.scale <= 0) return 0
   const interval = TICK_MS / c.scale
   c.accumulator += dtMs
   let ticks = 0

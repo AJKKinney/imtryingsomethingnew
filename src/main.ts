@@ -12,8 +12,10 @@
  * audio — would have played silent in the demo. §64.3 turns the required keypress
  * into the ignition beat rather than a wall in front of it.
  */
-import { advance, clock } from './gen/loop.ts'
-import { createWorld } from './core/world.ts'
+import { advance, clock, resume } from './gen/loop.ts'
+import { createWorld, type World } from './core/world.ts'
+import { contentHash } from './core/content.ts'
+import { copyWorld, restore, SNAPSHOT_VERSION } from './core/snapshot.ts'
 import { canvas2d, type CanvasLike } from './render/canvas2d.ts'
 import { buildAtlas, LABEL_SCALE } from './render/atlas.ts'
 import { buildBezel, drawBezel, DECK_BEZEL_HEIGHT } from './render/bezel.ts'
@@ -52,8 +54,38 @@ const boot = (): void => {
   const atlas = buildAtlas(offscreen, [...LABELS])
   const bezel = buildBezel(offscreen, atlas, DECK_BEZEL_HEIGHT)
   const cam = camera()
-  const world = createWorld(1)
   const c = clock()
+  const hash = contentHash()
+
+  // §9 — an EXACT world snapshot on pause, suspend or quit, and §106.2 makes it
+  // local-only: 220 KB against 16 KB for everything else the game persists, rewritten
+  // on every suspend, and nobody resumes a mid-run on another device.
+  const SLOT = 'meltline.snapshot'
+  const world = ((): World => {
+    try {
+      const saved = window.localStorage.getItem(SLOT)
+      if (saved === null) return createWorld(1)
+      const parsed = JSON.parse(saved) as { version: number; contentHash: string; world: World }
+      const result = restore(parsed, hash)
+      // §66.2 — reject, never clamp. A snapshot from a build with different numbers
+      // is refused and the run starts fresh, rather than resuming into a world that
+      // differs from the saved one deterministically and forever.
+      if (!result.ok) return createWorld(1)
+      return result.world
+    } catch {
+      return createWorld(1)
+    }
+  })()
+
+  const save = (): void => {
+    try {
+      window.localStorage.setItem(SLOT, JSON.stringify({
+        version: SNAPSHOT_VERSION, contentHash: hash, world: copyWorld(world),
+      }))
+    } catch {
+      // A full or disabled store is not a reason to interrupt a run.
+    }
+  }
 
   // The host writes intent; step 2 records it. A key held down is a state the
   // simulation samples, and a dash is an EDGE the simulation consumes (§142.5).
@@ -72,7 +104,16 @@ const boot = (): void => {
   window.addEventListener('keyup', (e) => { held.delete(e.code); sync() })
   // §9 — handhelds get their lids closed constantly. The clamp is in `advance`;
   // this is what stops the accumulator being handed a minute of wall clock.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) c.accumulator = 0 })
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      c.accumulator = 0
+      save()
+    }
+  })
+  window.addEventListener('pagehide', save)
+  // Any input leaves §9's auto-pause. The accumulator is already empty, so nothing
+  // catches up — §3.B: fast-forwarding through a lid-close is a death nobody saw.
+  window.addEventListener('keydown', () => { if (world.paused) resume(c, world) })
 
   let last = 0
   const frame = (now: number): void => {

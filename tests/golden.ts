@@ -10,44 +10,18 @@
  * FNV-1a over the exact bit pattern of every double, so a value that differs in its
  * last mantissa bit — which is precisely how a transcendental desynchronises — is a
  * different hash rather than a rounding difference nobody notices.
- */
-
-const view = new DataView(new ArrayBuffer(8))
-
-export interface Hasher {
-  h: number
-}
-
-export const hasher = (): Hasher => ({ h: 0x811c9dc5 | 0 })
-
-const byte = (s: Hasher, b: number): void => {
-  s.h = Math.imul(s.h ^ b, 0x01000193)
-}
-
-/** Every double, exactly — never a rounded or formatted view of one. */
-export const feed = (s: Hasher, x: number): void => {
-  view.setFloat64(0, x)
-  for (let i = 0; i < 8; i++) byte(s, view.getUint8(i))
-}
-
-export const digest = (s: Hasher): string => (s.h >>> 0).toString(16).padStart(8, '0')
-
-/** Convenience for the common case: hash a finite stream of numbers. */
-export const hashOf = (xs: Iterable<number>): string => {
-  const s = hasher()
-  for (const x of xs) feed(s, x)
-  return digest(s)
-}
-
-/**
- * A fingerprint of one top-level world attribute.
  *
- * This is what lets `tests/unit/loop.test.ts` enforce §142.6's third clause — that no
- * module writes a world attribute from outside the step that declares it — by
- * BEHAVIOUR rather than by declaration. A textual lint cannot see a mutation through
- * a reference (`const h = world.hash; h.count = 0`); a fingerprint taken around every
- * step sees it every time.
+ * The hasher itself moved to `src/core/hash.ts` at commit 8, because §16's content
+ * hash and §14's world hash are needed at RUNTIME — a replay refused for a content
+ * mismatch is a player-facing message, not a test. Two implementations of one hash
+ * is two things that can disagree, and the one that would disagree silently is the
+ * one the test uses. What stays here is `fingerprint`, which is a test instrument.
  */
+import { digest, feed, hasher } from '../src/core/hash.ts'
+
+export { digest, feed, hashOf, hasher, type Hasher } from '../src/core/hash.ts'
+
+
 export const fingerprint = (value: unknown): string => {
   const s = hasher()
   const walk = (v: unknown, depth: number): void => {

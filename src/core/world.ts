@@ -99,6 +99,16 @@ export interface World {
   arc: WeaponState
   /** Fractional enemies owed by §10's spawn curve. Carried, never rounded away. */
   spawnDebt: number
+  /**
+   * §9's auto-pause, as SIMULATION state rather than host state.
+   *
+   * A pause driven from outside the world is an unrecorded input, and an unrecorded
+   * input is a replay that does not reproduce — which is §26's silent desync arriving
+   * through the event the player triggers most. The gate reads it (§142.4).
+   */
+  paused: boolean
+  /** Ticks left of the one-tick window in which a resume is announced (§3.B). */
+  resumeGap: number
   /** Set when integrity reaches zero. §9: banked salvage kept, no revives. */
   over: boolean
   kills: number
@@ -156,6 +166,8 @@ export const createWorld = (seed: number): World => ({
   hash: spatialHash(HASH_BUCKET_BITS, ENEMY_POOL),
   arc: { cooldown: 0 },
   spawnDebt: 0,
+  paused: false,
+  resumeGap: 0,
   over: false,
   kills: 0,
   contactDamage: 0,

@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import { createWorld, type World } from '../../src/core/world.ts'
 import { advance, clock, runTick } from '../../src/gen/loop.ts'
 import { nextFloat, rng } from '../../src/core/rng.ts'
+import { quantise } from '../../src/core/input.ts'
 import { digest, feed, hasher } from '../golden.ts'
 
 /**
@@ -137,7 +138,10 @@ describe('A-005 · §14 the golden hash over 10,000 simulated ticks', () => {
     // Three numbers a tick (§142.5 step 2), recorded on the way IN rather than
     // reconstructed afterwards — which is what makes §16's crash codes replayable.
     expect(world.inputLog.length).toBe(600 * 3)
-    expect(world.inputLog[0]).toBe(log[0])
+    // The RECORDED value, which is the quantised one (§14): the log is what ran,
+    // not what the device reported, because a log that differs from its run is
+    // §26's silent desync with a codec in front of it.
+    expect(world.inputLog[0]).toBe(quantise(log[0] ?? 0))
   })
 })
 
