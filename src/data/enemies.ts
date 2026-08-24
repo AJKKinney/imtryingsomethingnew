@@ -28,6 +28,17 @@ export const ENEMIES: Readonly<Record<EnemyId, Enemy>> = Object.freeze({
   charger:  { id: 'charger',  hp: 35, speed: 100, hitbox: 9,  contact: 12, tierValue: 5, salvageValue: 3 },
 })
 
+/**
+ * §14 forbids iteration over object keys in an order-sensitive path, so the roster's
+ * order is declared rather than discovered. `Entity.kind` is an index into this, and
+ * an index is what keeps a pooled entity a flat record of numbers (§30).
+ */
+export const ENEMY_ORDER: readonly EnemyId[] = Object.freeze([
+  'swarmer', 'brute', 'shooter', 'splitter', 'phaser', 'charger',
+])
+
+export const enemyAt = (kind: number): Enemy => ENEMIES[ENEMY_ORDER[kind] ?? 'swarmer']
+
 /** §38 — projectile speeds. A shot slower than the player can never hit a fleeing one. */
 export const SHOOTER_SHOT_SPEED = 260
 export const SHOOTER_STANDOFF = 200
@@ -80,6 +91,8 @@ export const meanTierValue = (t: number): number =>
   mean(mixAtMinute(t).map((w) => ({ value: ENEMIES[w.value].tierValue, weight: w.weight })))
 
 export const provenance: ProvenanceRecord = {
+  ENEMY_ORDER: { kind: 'authored', system: 'field', axes: [], source: '§14', derivedFrom: 'definition' },
+  enemyAt: { kind: 'solved', system: 'field', axes: [], source: '§30', derivedFrom: 'definition', solvedBy: 'ENEMY_ORDER indexed by Entity.kind' },
   ENEMIES: { kind: 'authored', system: 'field', axes: ['damage'], source: '§10, §37.1, §118.3', derivedFrom: 'surrogate' },
   SHOOTER_SHOT_SPEED: { kind: 'authored', system: 'field', axes: [], source: '§38.1', derivedFrom: 'surrogate' },
   SHOOTER_STANDOFF: { kind: 'authored', system: 'field', axes: [], source: '§10', derivedFrom: 'surrogate' },

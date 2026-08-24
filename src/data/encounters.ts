@@ -27,6 +27,31 @@ export const ENCOUNTERS: Readonly<Record<EncounterId, Encounter>> = Object.freez
   foundry:       { id: 'foundry',       name: 'THE FOUNDRY',    minute: 20, hp: 215_300, targetSeconds: 100, phases: [0.66, 0.33] },
 })
 
+/**
+ * §14 forbids object-key iteration in an order-sensitive path, and "which encounter
+ * is next" is exactly one: §105.1's run clock counts toward the next NAMED encounter,
+ * so the order decides what the player is told.
+ */
+export const ENCOUNTER_ORDER: readonly EncounterId[] = Object.freeze([
+  'sentinel', 'breaker', 'regulator', 'sentinelPrime', 'breakerPrime', 'foundry',
+])
+
+/**
+ * §105.1 — the run is built entirely of time gates and had no clock for a hundred
+ * sections. This is what the marker fills toward. Returns `undefined` past 20:00,
+ * because §136.2 found the composite problem the narrative exposed: §48.1 leaves
+ * nothing after THE FOUNDRY to count toward, and §127.2's escalation must stay
+ * invisible, so during that fight the clock shows the fight's ELAPSED time alone —
+ * which is exactly the figure §126.4's tiered score reads.
+ */
+export const nextEncounter = (minute: number): Encounter | undefined => {
+  for (const id of ENCOUNTER_ORDER) {
+    const e = ENCOUNTERS[id]
+    if (e.minute > minute) return e
+  }
+  return undefined
+}
+
 /** §12, §108.4 — a hard, visible, NON-damaging wall; §38.4's herding lives in the geometry. */
 export const ARENA_WIDTH = 1400
 export const ARENA_HEIGHT = 900
@@ -52,6 +77,8 @@ export const PRIME_ORB_HEAT_CAP = 3
 export const RELEASE_BEAT_SECONDS = 20
 
 export const provenance: ProvenanceRecord = {
+  ENCOUNTER_ORDER: { kind: 'authored', system: 'field', axes: [], source: '§14, §105.1', derivedFrom: 'definition' },
+  nextEncounter: { kind: 'solved', system: 'ui', axes: [], source: '§105.1, §136.2', derivedFrom: 'definition', solvedBy: 'the first encounter in ENCOUNTER_ORDER past the current minute; undefined once THE FOUNDRY has walked in' },
   ENCOUNTERS: {
     kind: 'solved', system: 'field', axes: ['damage'], source: '§32.1, §48.3, §61.3', derivedFrom: 'surrogate',
     solvedBy: 'tools/solve/bosses.ts — hp = DPS(t) x 0.6 x targetSeconds, the Foundry at x1.0 because §48.1 stops spawning',

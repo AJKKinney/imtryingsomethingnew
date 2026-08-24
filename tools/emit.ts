@@ -195,6 +195,7 @@ export const emitLoop = (order: readonly { index: number; id: string }[]): strin
 
   return `${BANNER}
 import type { World } from '../core/world.ts'
+import { TICK_MS, MAX_CATCHUP_TICKS, PAUSE_GAP_MS } from '../core/tick.ts'
 ${imports}
 
 /** The step ids this loop wires, in manifest order. */
@@ -213,18 +214,13 @@ ${calls}
   world.tick++
 }
 
-/** §142.4 — the fixed step. 60 Hz, and never a function of frame timing. */
-export const TICK_MS = 1000 / 60
-
 /**
- * The accumulator's clamp (§3.B). Handhelds get their lids closed constantly, and a
- * clamp is the difference between resuming and fast-forwarding through the crush the
- * player was in the middle of.
+ * Re-exported from \`core/tick\`, which is a leaf (§145.4). The loop is the only
+ * module allowed to cross systems, so it is the wrong place to DEFINE a constant
+ * every simulation module needs — that would put each of them on an import of the
+ * loop that imports them.
  */
-export const MAX_CATCHUP_TICKS = 5
-
-/** A gap this long is not a hitch; §9 auto-pauses rather than simulating through it. */
-export const PAUSE_GAP_MS = 1000
+export { TICK_MS, MAX_CATCHUP_TICKS, PAUSE_GAP_MS } from '../core/tick.ts'
 
 export interface Clock {
   accumulator: number

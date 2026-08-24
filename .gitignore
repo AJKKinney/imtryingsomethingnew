@@ -8,4 +8,11 @@ playwright-report/
 
 # Generated code is never committed (§147.2): the readable artifact is the source,
 # and every typecheck, build and test re-emits first so a fresh clone cannot lack it.
-src/gen/
+#
+# Named one by one rather than ignoring `src/gen/` whole, because §19's tree puts the
+# hand-written procedural generators there too — `palette`, `shapes`, `glow`, `synth`,
+# `variants`. Those are the source of art, not the output of a tool, and ignoring the
+# directory would have deleted them from the repository the first time one was added.
+src/gen/sintable.ts
+src/gen/loop.ts
+src/gen/strokefont.ts

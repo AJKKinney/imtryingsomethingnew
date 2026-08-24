@@ -28,6 +28,11 @@ jobs:
         run: npm run gendocs
       - name: typecheck
         run: npm run typecheck
+      # §22's static checks are part of the push tier, not a convention someone
+      # remembers: the no-transcendentals rule (§14), the step-declaration rule
+      # (§142.6) and the no-fillText rule (§140.2, §147.1).
+      - name: static checks — math, steps, text
+        run: npm run lint
       - name: build (web)
         run: npm run build
       - name: tests — unit, solver, build tiers

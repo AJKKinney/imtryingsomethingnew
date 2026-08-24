@@ -28,7 +28,7 @@ export const TICK_ORDER: readonly TickStep[] = Object.freeze([
   { index: 8,  id: 'derelicts',    module: 'game/derelicts',   system: 'field',   note: '§110.3 — the channel is cancelled by movement this tick and unaffected by damage; progress resets.' },
   { index: 9,  id: 'enemyai',      module: 'game/enemies',     system: 'field',   note: 'AI and movement.' },
   { index: 10, id: 'spatialhash',  module: 'core/spatialhash', system: 'core',    note: 'Rebuild. Cell size 64 u.' },
-  { index: 11, id: 'separation',   module: 'game/enemies',     system: 'field',   note: 'Soft repulsion, capped at 8 neighbours per enemy per tick.' },
+  { index: 11, id: 'separation',   module: 'game/separation',  system: 'field',   note: 'Soft repulsion, capped at 8 neighbours per enemy per tick. Its own module because a step is one module: §142.5 fixes the ORDER and the id, and the file a step lives in is not part of the order.' },
   { index: 12, id: 'weapons',      module: 'game/weapons',     system: 'field',   note: 'Fire, iterating components in stable (row, col) order — §14 forbids a comparator that can return 0 for distinct entities.' },
   { index: 13, id: 'projectiles',  module: 'game/projectiles', system: 'field',   note: 'Movement.' },
   { index: 14, id: 'collision',    module: 'game/damage',      system: 'field',   note: 'Collision and damage. §37.2 — global i-frames, single highest overlapping contact value.' },

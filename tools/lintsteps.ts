@@ -89,11 +89,12 @@ export const lintSteps = (manifestIds: readonly string[]): StepViolation[] => {
         continue
       }
       const writes = [...writesRaw.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? '')
-      for (const attr of writes) {
-        const owner = claimedWrite.get(attr)
-        if (owner !== undefined) out.push({ file, why: `claims world.${attr}, already owned by ${owner}` })
-        claimedWrite.set(attr, file)
-      }
+      // Several steps legitimately touch one attribute — the entity pool is spawned
+      // into at step 7, moved at 9, separated at 11, shot at 12, damaged at 14 and
+      // reaped at 19. §142.6's rule is that a writer DECLARES what it writes, not
+      // that an attribute has a single owner; commit 5 read it as exclusivity, which
+      // is stricter than the text and would have forbidden the entity pool outright.
+      for (const attr of writes) claimedWrite.set(attr, file)
       for (const attr of assigned) {
         // `tick` is the loop's own, written at step 24 and by nobody else.
         if (attr === 'tick') {

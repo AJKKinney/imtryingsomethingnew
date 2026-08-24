@@ -4,6 +4,7 @@
 // rather than 18,028 tokens of everything.
 
 import * as cores from './cores.ts'
+import * as emitters from './emitters.ts'
 import * as encounters from './encounters.ts'
 import * as enemies from './enemies.ts'
 import * as heat from './heat.ts'
@@ -14,7 +15,7 @@ import * as tickorder from './tickorder.ts'
 import type { ProvenanceRecord } from './meta.ts'
 
 export * from './meta.ts'
-export { cores, encounters, enemies, heat, player, waves, builds, tickorder }
+export { cores, emitters, encounters, enemies, heat, player, waves, builds, tickorder }
 
 export interface Partition {
   readonly name: string
@@ -28,6 +29,7 @@ export const PARTITIONS: readonly Partition[] = Object.freeze([
   { name: 'heat', module: heat, provenance: heat.provenance },
   { name: 'cores', module: cores, provenance: cores.provenance },
   { name: 'enemies', module: enemies, provenance: enemies.provenance },
+  { name: 'emitters', module: emitters, provenance: emitters.provenance },
   { name: 'waves', module: waves, provenance: waves.provenance },
   { name: 'encounters', module: encounters, provenance: encounters.provenance },
   { name: 'tickorder', module: tickorder, provenance: tickorder.provenance },

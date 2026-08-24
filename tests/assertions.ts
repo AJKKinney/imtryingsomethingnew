@@ -52,7 +52,15 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // that an addition is costed against the increment and the TOTAL is recomputed
   // rather than restated, so the plan moved rather than the work being squeezed into
   // a count that had no room for it.
-  1: 17, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // 17 -> 18 at commit 7: A-015 asserts friend and foe are separable with hue removed
+  // ENTIRELY, and it is stamped `e2e` because that is a claim about a rendered frame.
+  // The property underneath it is structural and checkable before a pixel is drawn —
+  // §15's grammar makes SYMMETRY the faction — and those are two different checks.
+  // Folding the second into the first by re-tiering A-015 would have been §92.2's
+  // failure with a harness instead of a baseline: moving the thing being measured so
+  // the measurement fits.
+  1: 18, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -71,7 +79,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-004', phase: 1, tier: 'build', cadence: 'push', source: '§96.6, §131.6, §61.5', status: 'implemented',
       statement: 'Every exported constant declares provenance: a system tag, its axes, authored-or-solved, and a procedure if solved.',
       why: '§96 found four constants owned by three passes, each individually reviewed and each wrong at the JOIN — a defect no per-constant column can see. The system tag is what makes "a system is audited whole" enforceable.' }),
-  a({ id: 'A-005', phase: 1, tier: 'unit', cadence: 'push', source: '§14', status: 'todo',
+  a({ id: 'A-005', phase: 1, tier: 'unit', cadence: 'push', source: '§14', status: 'implemented',
       statement: 'A golden hash over 10,000 simulated ticks reproduces exactly.',
       why: 'IEEE-754 does not specify Math.sin, cos, pow, exp or log — they legitimately differ across engines and platforms, so a single transcendental in the sim would desynchronise replays and look like a mysterious bug rather than a spec violation.' }),
   a({ id: 'A-006', phase: 1, tier: 'build', cadence: 'push', source: '§14', status: 'implemented',
@@ -89,7 +97,7 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-010', phase: 1, tier: 'unit', cadence: 'push', source: '§16, §30', status: 'todo',
       statement: 'A snapshot round-trips the world bit-exactly, and a replay whose content hash mismatches is refused rather than played.',
       why: 'Pretending a v0.1 replay reproduces on v0.2 is how a "watch this run" feature becomes a liar.' }),
-  a({ id: 'A-011', phase: 1, tier: 'unit', cadence: 'push', source: '§142.4', status: 'todo',
+  a({ id: 'A-011', phase: 1, tier: 'unit', cadence: 'push', source: '§142.4', status: 'implemented',
       statement: 'The time-scale is a tick gate: the golden hash is identical at 100%, 20%, 5% and paused.',
       why: 'Scaling dt makes the step variable, which makes the hash a function of frame timing and silently breaks replays, PAR and the daily. A gate at scale 0 is trivially zero ticks where a zero multiplier is a special case.' }),
   a({ id: 'A-012', phase: 1, tier: 'build', cadence: 'push', source: '§142.6', status: 'implemented',
@@ -189,6 +197,11 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-042', phase: 1, tier: 'unit', cadence: 'push', source: '§17', status: 'implemented',
       statement: 'Every pool is allocated at boot and never grown during a run; a full pool refuses the spawn and counts the refusal.',
       why: 'Growing a pool mid-run allocates, and allocating mid-run is a garbage-collection pause inside a 16.7 ms frame on the primary venue. §31.3 fixes concurrent enemies at 190-624 against a 2,048 pool, so a full pool means something upstream is wrong; the honest response is a dropped spawn and a counter the sweep can read.' }),
+
+  a({ id: 'A-043', phase: 1, tier: 'unit', cadence: 'push', source: '§15, §46.2', status: 'implemented',
+      quirk: true,
+      statement: 'The shape grammar carries the faction in its FORM: every friendly silhouette is symmetric and closed, and no hostile one is either.',
+      why: 'This is an ASYMMETRY rather than a value (§133.6), which is what a quirk needs: a session tidying the generator into one code path for both factions would leave every hue, every palette test and every screenshot passing, and would delete the only channel §46.2 has under tritanopia — the one CVD type the cyan/amber axis does not survive. In a screen holding 570 entities, telling your shots from theirs is a playability question, not a style one.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>
