@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**87 decisions · 56 supersede an earlier one · 64%.**
+**88 decisions · 56 supersede an earlier one · 64%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -113,6 +113,7 @@ resume budget honest as this file grows.
 | engagement is measured at Pulse's own scale | heat | commit 10 | — |
 | a STEP declaration is a claim to be wired | build | commit 10 | §142.6 |
 | the prototype carries its own tick gate | ui | commit 10 | — |
+| the first paint never waits on a scheduler | render | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -227,7 +228,7 @@ Heat is owned by the COMPONENT and travels with it. Taken the other way the move
 A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags, comparison set and store copy follow; auto-placement's "podcast venue" justification is retired and it stands on onboarding and accessibility, which are real.
 
 
-### render — 9
+### render — 10
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -264,6 +265,10 @@ The locale-invariant Latin glyph set at three scales plus §102.2's 131 labels a
 **the heat channel carries brightness, not only hue** — commit 10 *(supersedes §85.4)*
 
 §85.1 lists the heat channel as "hue AND brightness — brightness alone survives" and §12's ramp runs cyan to deep red, and rendered as hue alone the second half is false: the ramp's luminance RISES to the amber in the middle and FALLS to the red at the end, so under total colour loss a cold cell and a melting one are one mid-grey and the cold one is the louder of the two. The tint composites over the substrate at an alpha climbing from a floor to full at meltdown. Hue says where on the ladder; brightness says how far, monotonically. Found by looking at the thing rather than at the table — a board whose safest cells were its brightest.
+
+**the first paint never waits on a scheduler** — commit 10
+
+The host draws frame zero synchronously and keeps a timer BEHIND `requestAnimationFrame` — starting only if rAF has not fired within a second, standing down the tick it does, both driving the one `frame`. Found by shipping §71.4's commit-10 link and being told the board was blank: an embedded frame the browser is not rendering never runs rAF, so a canvas whose first paint waits on it is never touched, and an untouched canvas is TRANSPARENT — the page's own dark ground shows through and reads as a game that drew nothing. Nothing throws and nothing logs, and a top-level document always animates, so it reproduces nowhere. §14 is untouched, because this is the host choosing when to call and `dt` is still an input the host writes.
 
 
 ### field — 11

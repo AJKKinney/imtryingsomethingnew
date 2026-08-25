@@ -46,6 +46,28 @@ world, and the generator wired it into a loop that imported a `step()` nobody ha
 `STEP` declaration is a **claim to be wired**, so `tools/emit.ts` now refuses one it cannot
 honour and `gen/loop`'s PENDING list is the honest record until the board joins the world.
 
+**One finding from the link itself, which is the only kind a checkpoint can produce.** The
+first playable link came back as *"the board is blank"*, and it reproduced nowhere: the
+published JavaScript is byte-identical to the local build, the DOM survives publication
+intact, and the page renders correctly from a file, over HTTP, and inside a sandboxed frame.
+Reproduced at last by instrumenting the page rather than watching it — **a
+`<link rel="stylesheet">` blocks execution of every script after it until it resolves**, so a
+font host that is slow, blocked by an extension, or refused by a network policy does not
+degrade the type: it stops the game from ever starting. The HTML chrome renders, the canvas
+is never touched, and **an untouched canvas is transparent** — the page's own dark ground
+shows through and reads as a board that drew nothing. Nothing throws and nothing logs.
+
+Fixed on both sides, because either alone leaves the failure reachable. The page loads its
+fonts **non-blocking**, so nothing external sits in front of the board. And the host **draws
+frame zero synchronously** and keeps a timer *behind* `requestAnimationFrame` — starting only
+if rAF has not fired within a second, standing down the tick it does — because an embedded
+frame the browser is not rendering never animates, and a first paint that waits on a
+scheduler is the same black rectangle by a second route. §14 is untouched: this is the host
+choosing when to call, and `dt` is still an input the host writes rather than a clock the
+simulation reads. The page also carries **§67.3's fault trace pointed at itself** — three
+seconds after load it asks the canvas whether anything ever reached it, and says nothing at
+all unless the answer is no.
+
 **Next: §9's gate**, at session 3 rather than session 5–7 (§81.3) — four qualitative criteria
 (§82.1), twenty minutes with the board and four questions rather than eight runs (§82.3), and
 §73.2's calibration set asked *before* it so the result can be read correctly. Then commit 11

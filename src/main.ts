@@ -41,6 +41,14 @@ export const target: string = __MELTLINE_TARGET__
  *  on neither this list nor the human-written one. */
 const LABELS = ['INTEGRITY', 'NEXT', 'KILLS'] as const
 
+/**
+ * How long the host waits for `requestAnimationFrame` before driving the loop from a
+ * timer instead. One second is long enough that no browser doing ordinary work is
+ * mistaken for a frame that is never rendered, and short enough that a viewer who
+ * opens the page in a collapsed panel does not sit in front of a dark board.
+ */
+const RAF_GRACE_MS = 1000
+
 const offscreen = (width: number, height: number): Surface => {
   const c = document.createElement('canvas')
   c.width = width
@@ -274,9 +282,46 @@ const boot = (): void => {
       if (boardAccumulator >= interval) boardAccumulator = 0
       drawPrototype(stage, atlas, proto, workbench)
     }
-    requestAnimationFrame(frame)
   }
-  requestAnimationFrame(frame)
+
+  /**
+   * §3.B's sibling, and the bug that ate the first playable link: an embedded frame
+   * the browser is not rendering never runs `requestAnimationFrame`, so a board whose
+   * FIRST paint waits on rAF is a black rectangle in every viewer that starts the page
+   * offscreen — the HTML chrome around it renders, the canvas is never touched, and an
+   * untouched canvas is transparent. Nothing throws and nothing logs, which is why it
+   * reproduced nowhere: a top-level document always animates.
+   *
+   * So the first frame is drawn synchronously, before any scheduler exists, and the
+   * timer stands BEHIND rAF rather than beside it — it starts only if rAF has not
+   * fired, and stands down the tick it does, so the two can never both advance the
+   * clock. Both drive the same `frame`, and `frame` is the only thing that does.
+   *
+   * §14 is untouched: this is the host choosing when to call, and `dt` is still an
+   * input the host writes rather than a clock the simulation reads.
+   */
+  let pumped = false
+  let fallback = 0
+
+  const animate = (now: number): void => {
+    if (fallback !== 0) {
+      window.clearInterval(fallback)
+      fallback = 0
+    }
+    pumped = true
+    frame(now)
+    requestAnimationFrame(animate)
+  }
+
+  frame(0)
+  requestAnimationFrame(animate)
+
+  window.setTimeout(() => {
+    if (pumped) return
+    fallback = window.setInterval(() => {
+      frame(performance.now())
+    }, TICK_MS)
+  }, RAF_GRACE_MS)
 }
 
 if (typeof document !== 'undefined') boot()
