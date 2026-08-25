@@ -46,7 +46,17 @@ world, and the generator wired it into a loop that imported a `step()` nobody ha
 `STEP` declaration is a **claim to be wired**, so `tools/emit.ts` now refuses one it cannot
 honour and `gen/loop`'s PENDING list is the honest record until the board joins the world.
 
-**One finding from the link itself, which is the only kind a checkpoint can produce.** The
+**Two findings from the link itself, which is the only kind a checkpoint can produce**,
+and the second is the one that was actually killing it. **`navigator.getGamepads` exists on
+every browser, so §81.2's pad cursor guarded it with a `typeof` check — and inside a frame
+whose permissions policy withholds the gamepad feature, *calling* it throws.** The poll runs
+first in every frame, so the first frame threw, nothing was ever drawn, and an untouched
+canvas is **transparent**: the page's own dark ground showed through and read as a game that
+rendered nothing rather than as a game that crashed. **Presence is not permission** — A-052,
+and the host now asks once and stops asking, because a policy denial cannot be revoked within
+a document.
+
+**The first finding was a real hazard on the same path and is fixed as well.** The
 first playable link came back as *"the board is blank"*, and it reproduced nowhere: the
 published JavaScript is byte-identical to the local build, the DOM survives publication
 intact, and the page renders correctly from a file, over HTTP, and inside a sandboxed frame.
@@ -120,13 +130,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 22/23 implemented · 23 planned (seeded)
+phase 1: 23/24 implemented · 24 planned (seeded)
 phase 2: 17/28 implemented · 41 planned (28 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   39/51 implemented · 268 planned
+total:   40/52 implemented · 269 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->

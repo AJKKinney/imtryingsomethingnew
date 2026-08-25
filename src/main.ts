@@ -49,6 +49,37 @@ const LABELS = ['INTEGRITY', 'NEXT', 'KILLS'] as const
  */
 const RAF_GRACE_MS = 1000
 
+/**
+ * PRESENCE IS NOT PERMISSION, and this is the bug that made the first playable link a
+ * black rectangle. `navigator.getGamepads` exists on every modern browser, so a `typeof`
+ * check passes — and inside a frame whose permissions policy withholds the `gamepad`
+ * feature, CALLING it throws a SecurityError. The pad poll runs first in every frame, so
+ * the very first frame threw, nothing was ever drawn, and an untouched canvas is
+ * transparent: the page's own dark ground showed through and read as a game that
+ * rendered nothing. It reproduced nowhere, because a top-level document has no policy
+ * withholding anything.
+ *
+ * A policy denial cannot be revoked within a document, so the host asks ONCE and then
+ * stops asking rather than throwing sixty times a second. §3 keeps the handheld as the
+ * primary venue and §82.1's fourth gate criterion is untouched — a pad works wherever
+ * the host permits one, and where it does not the keyboard is the whole interface,
+ * rather than the whole page being lost to a device nobody plugged in.
+ */
+export const guardedPads = (
+  read: (() => readonly (Gamepad | null)[]) | undefined,
+): (() => readonly (Gamepad | null)[]) => {
+  let allowed = read !== undefined
+  return () => {
+    if (!allowed || read === undefined) return []
+    try {
+      return read()
+    } catch {
+      allowed = false
+      return []
+    }
+  }
+}
+
 const offscreen = (width: number, height: number): Surface => {
   const c = document.createElement('canvas')
   c.width = width
@@ -212,8 +243,29 @@ const boot = (): void => {
     [9, 'nextPart'],
   ]
   const wasPressed = new Set<number>()
+
+  /**
+   * PRESENCE IS NOT PERMISSION, and this is the bug that made the first playable link
+   * a black rectangle for four days. `navigator.getGamepads` exists on every modern
+   * browser, so a `typeof` check passes — and inside a frame whose permissions policy
+   * withholds the `gamepad` feature, CALLING it throws a SecurityError. `pollPad` runs
+   * first in every frame, so the very first frame threw, nothing was ever drawn, and an
+   * untouched canvas is transparent: the page's own dark ground showed through and read
+   * as a game that rendered nothing. It reproduced nowhere, because a top-level document
+   * has no policy withholding anything.
+   *
+   * A policy denial cannot change within a document, so the host asks once and then stops
+   * asking rather than throwing sixty times a second. §3 keeps the handheld as the primary
+   * venue and §82.1's fourth gate criterion still stands — a pad works wherever the host
+   * permits one, and where it does not, the keyboard is the whole interface rather than
+   * the whole page being lost.
+   */
+  const readPads = guardedPads(
+    typeof navigator.getGamepads === 'function' ? () => navigator.getGamepads() : undefined,
+  )
+
   const pollPad = (): void => {
-    const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : []
+    const pads = readPads()
     const pad = [...pads].find((g) => g !== null)
     if (pad === undefined || pad === null) return
     for (const [button, command] of GAMEPAD) {

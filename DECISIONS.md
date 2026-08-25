@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**88 decisions · 56 supersede an earlier one · 64%.**
+**89 decisions · 56 supersede an earlier one · 63%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -114,6 +114,7 @@ resume budget honest as this file grows.
 | a STEP declaration is a claim to be wired | build | commit 10 | §142.6 |
 | the prototype carries its own tick gate | ui | commit 10 | — |
 | the first paint never waits on a scheduler | render | commit 10 | — |
+| presence is not permission | ui | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -432,7 +433,7 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
 
-### ui — 8
+### ui — 9
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -461,6 +462,10 @@ The RUN tab and the WORKBENCH tab share ONE board object, so the difference betw
 **the prototype carries its own tick gate** — commit 10
 
 The workbench advances heat on whole DT steps, because §142.4 makes a time-scale a TICK GATE rather than a `dt` multiplier and a prototype with no world still obeys the rule the world obeys. It runs at REAL TIME rather than §9's 20%, which is the scope of that rule rather than an exception to it: twenty percent exists so that opening the board INSIDE A RUN costs something, §99.3 already makes it a setting rather than a constant, and there is no run here to slow it against. At 0.2 the heat model's 1.5-second time constant is seven and a half seconds of wall clock and settling takes twenty — so the instrument §81.3 built to show a placement's whole thermal range in ten seconds would take longer than the run it stands in for.
+
+**presence is not permission** — commit 10
+
+A host device API is asked ONCE and, if the call is refused, never again. `navigator.getGamepads` exists on every modern browser, so §81.2's pad cursor guarded it with a `typeof` check and passed — and inside a frame whose permissions policy withholds the gamepad feature, CALLING it throws a SecurityError. The poll runs first in every frame, so the first frame threw and nothing was ever drawn; an untouched canvas is TRANSPARENT, so the page read as a game that rendered nothing rather than as a game that crashed, and it reproduced nowhere because a top-level document has no policy withholding anything. §3 keeps the handheld primary and §82.1's fourth criterion is untouched: a pad works wherever the host permits one, and where it does not the keyboard is the whole interface rather than the whole page being lost to a device nobody plugged in.
 
 **a screen title is a label, its contents are prose** — commit 9
 

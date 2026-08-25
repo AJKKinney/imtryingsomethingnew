@@ -67,7 +67,12 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // rather than asserted; the decision index is §84.1's "a decision is not settled
   // until it is indexed" turned into a build failure; the generated schedule is what
   // stops §21's own arithmetic recurring; and the canonical-home budget is §135.4.
-  1: 23, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // 23 -> 24 at commit 10: A-052 asserts that a host device API which is PRESENT but
+  // FORBIDDEN is asked once and never again. Nothing seeded held it, because the whole
+  // manifest was written against a browser that either has a feature or does not — and
+  // the frame the first playable link shipped into has a third state.
+  1: 24, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -241,6 +246,9 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-051', phase: 2, tier: 'unit', cadence: 'push', source: '§69.3, §69.1', status: 'implemented',
       statement: 'The inspect panel returns all six quantities a placement decision needs — power against draw, region heat, this core\'s threshold pair, the equilibrium at the current engagement, the component\'s state, and what a confirm would place — and every one is read from state the simulation already computes.',
       why: '§69.1 enumerated the eight a placement decision needs and found the game showed ONE, with the other seven computed sixty times a second and discarded — which is why this is the cheapest large change in the document and not a feature. §69.2 is the rule that keeps it from contradicting §4: discovery is hidden, arithmetic never is. A quantity recomputed for the display would be a second implementation that can disagree with the simulation, which is the shape §134.2 found in the fill.' }),
+  a({ id: 'A-052', phase: 1, tier: 'unit', cadence: 'push', source: '§3, §82.1', status: 'implemented',
+      statement: 'A host device API that is present but forbidden is asked exactly once: the guarded reader returns an empty list, stops calling, and never throws into the frame.',
+      why: 'PRESENCE IS NOT PERMISSION. `navigator.getGamepads` exists on every modern browser, so a `typeof` check passes, and inside a frame whose permissions policy withholds the gamepad feature CALLING it throws a SecurityError. The pad poll runs first in every frame, so the first frame threw and nothing was ever drawn — and an untouched canvas is TRANSPARENT, so the page read as a game that rendered nothing rather than as a game that crashed. It reproduced nowhere, because a top-level document has no policy withholding anything. The once-only half is not tidiness: a denial cannot be revoked within a document, so a reader that keeps asking throws sixty times a second down a channel nobody is reading.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>
