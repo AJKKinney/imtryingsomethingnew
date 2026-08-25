@@ -27,6 +27,14 @@ export interface Surface {
    */
   setFill(colour: string): void
   fillRect(x: number, y: number, w: number, h: number): void
+  /**
+   * §46.2's firing signature needed the one primitive this interface did not have.
+   * A stroked wedge is an OUTLINE and reads as a shape the player must interpret; a
+   * FILLED wedge reads as a discharge at a glance, which is what "distinct firing
+   * signature" means in a frame that already holds ~600 stroked silhouettes. It is
+   * the same path either way, so it costs one draw.
+   */
+  fill(): void
   /** The only text path in the game: a blit of a pre-rendered glyph or label. */
   blit(source: Surface, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number): void
   /** Draw calls issued since the last reset — §39.3 gates on this directly. */

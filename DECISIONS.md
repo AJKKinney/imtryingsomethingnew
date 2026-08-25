@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**94 decisions · 56 supersede an earlier one · 60%.**
+**96 decisions · 56 supersede an earlier one · 58%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -120,6 +120,8 @@ resume budget honest as this file grows.
 | a mirrored glyph pair is guarded by its asymmetry | render | commit 10 | — |
 | the cursor is white and the core is cyan | ui | commit 10 | — |
 | the substrate dot scales with the cell | render | commit 10 | — |
+| a weapon that fires leaves something to see | render | commit 10 | — |
+| a signature is measured in frames, not in ticks | render | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -234,7 +236,7 @@ Heat is owned by the COMPONENT and travels with it. Taken the other way the move
 A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags, comparison set and store copy follow; auto-placement's "podcast venue" justification is retired and it stands on onboarding and accessibility, which are real.
 
 
-### render — 14
+### render — 16
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -291,6 +293,14 @@ Both slashes were authored as the same stroke, so every ratio in the game printe
 **the substrate dot scales with the cell** — commit 10
 
 A dot fixed at two pixels is §83.2's finding one level down — that pass caught a 120x120 board asserted against a bezel band nobody had measured. At the bezel's 14.4 px cell two pixels is a seventh of the cell and reads; at the workbench's 52 px it is a twenty-sixth, so the board's SHAPE — §108.3's explicit per-core geometry, which is what tells a player where they may place at all — stopped being visible. The floor keeps §86.2's measured bezel exactly where it was.
+
+**a weapon that fires leaves something to see** — commit 10
+
+§46.2 required a distinct FIRING SIGNATURE per emitter in the pass that required distinct silhouettes, and only the silhouettes were built. Arc resolves instantly (§38.2), so a shot left no projectile behind AND the simulation recorded nothing a renderer could read — `world.arc` held a cooldown and nothing else — so the bullet heaven drew no weapons at all, three times a second, and the only visible consequence of firing was an enemy that stopped existing. The simulation now stamps the tick, the aim and what it hurt; the renderer draws the CONE rather than a beam to the target, because §121.5 measures Arc's coverage at 0.17 of the circle against 1.00 for five of the roster and coverage is the axis §33.3's DPS table cannot see, so the wedge shows what the weapon IS where a beam would show only that a shot happened. It is drawn from §14's own half-angle constant, so the picture and the predicate are one object (§134.6).
+
+**a signature is measured in frames, not in ticks** — commit 10
+
+The wedge is FILLED as well as stroked and held for ten ticks rather than six. Found by shipping the cone and being told, again, that no weapons were firing: at 3 shots a second a six-tick flash leaves the weapon dark in 77% of frames, and a 2 px outline in a frame already holding hundreds of stroked silhouettes is a shape to interpret rather than a discharge. Ten ticks covers half of Arc's own cadence, which is the band the assertion now states — long enough to read as fire, short enough that two shots never overlap, so it stays a FADE rather than a constant glow (§12's reduce-flashing rule). Both are RENDER constants: the simulation stamps `firedAt` and never reads either, so §14's golden hash does not move. §39.3's ceiling gains one draw, against a margin of a hundred.
 
 
 ### field — 11

@@ -72,6 +72,19 @@ export interface Emitter {
   readonly evolution: Evolution
 }
 
+/**
+ * The cosine of half Arc's cone — `cos(30 degrees)`, from §8.2's 60-degree cone.
+ *
+ * A CONSTANT rather than a call, because §14's policy permits nothing transcendental
+ * in the simulation, and it lives in `data/` rather than beside the weapon because
+ * both `game/weapons` and `render/renderer` test against it: the damage volume and
+ * the drawn wedge must be the same boundary, and two copies of a number are two
+ * boundaries waiting to drift (§134.6 — the picture and the predicate are one object).
+ * §145.4's layering is the other half of the reason: `data/` is a leaf both may read,
+ * where an import from `render/` into `game/` would point the view at a system.
+ */
+export const ARC_HALF_ANGLE_COS = 0.8660254037844387
+
 export const EMITTERS: Readonly<Record<EmitterId, Emitter>> = Object.freeze({
   arc: {
     id: 'arc', shape: SHAPE_SINGLE, draw: 2, damage: 6, rate: 3, range: 90,
@@ -270,6 +283,7 @@ export const provenance: ProvenanceRecord = {
   SHAPE_ELL3: { kind: 'authored', system: 'board', axes: [], source: '§8.2', derivedFrom: 'definition' },
   EMITTERS: { kind: 'authored', system: 'draft', axes: ['damage', 'heat'], source: '§8.2, §92.3, §113.3, §131.3', derivedFrom: 'surrogate' },
   EMITTER_ORDER: { kind: 'authored', system: 'draft', axes: [], source: '§14', derivedFrom: 'definition' },
+  ARC_HALF_ANGLE_COS: { kind: 'solved', system: 'draft', axes: [], source: '§8.2, §14', derivedFrom: 'definition', solvedBy: 'cos of half of Arc\'s 60-degree cone, baked because §14 permits no transcendental in the simulation' },
   SIPHON_BASE: { kind: 'authored', system: 'draft', axes: ['damage', 'heat'], source: '§131.3', derivedFrom: 'surrogate' },
   SIPHON_PER_HEAT: { kind: 'authored', system: 'draft', axes: ['damage', 'heat'], source: '§131.3', derivedFrom: 'surrogate' },
   LEVEL_DAMAGE_STEP: { kind: 'authored', system: 'draft', axes: ['damage'], source: '§8.2', derivedFrom: 'surrogate' },

@@ -15,6 +15,9 @@ export interface StubSurface extends Surface {
   paths: number
   /** Every fill issued as `x, y, w, h, colour`, so §85.2's cell fills are checkable. */
   readonly fills: (number | string)[]
+  /** Every filled PATH, as the colour it was filled with — §46.2's firing signature
+   *  is a filled wedge, and "it was filled" is the half a draw count cannot see. */
+  readonly filled: string[]
 }
 
 export const stubSurface = (width: number, height: number): StubSurface => {
@@ -24,11 +27,13 @@ export const stubSurface = (width: number, height: number): StubSurface => {
     height,
     segments: [],
     fills: [],
+    filled: [],
     paths: 0,
     draws: 0,
     clear() {
       s.segments.length = 0
       s.fills.length = 0
+      s.filled.length = 0
       s.paths = 0
     },
     beginPath() {
@@ -48,6 +53,10 @@ export const stubSurface = (width: number, height: number): StubSurface => {
     },
     setFill(colour) {
       fill = colour
+    },
+    fill() {
+      s.filled.push(fill)
+      s.draws++
     },
     fillRect(x, y, w, h) {
       s.fills.push(x, y, w, h, fill)

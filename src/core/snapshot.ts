@@ -27,6 +27,7 @@ export const SNAPSHOT_VERSION = 1
 
 const copyEntity = (e: Entity): Entity => ({
   id: e.id, kind: e.kind, x: e.x, y: e.y, vx: e.vx, vy: e.vy, hp: e.hp, flags: e.flags,
+  hurtAt: e.hurtAt,
 })
 
 const copyPool = (p: Pool<Entity>): Pool<Entity> => ({
@@ -54,7 +55,7 @@ export const copyWorld = (w: World): World => ({
   // (§142.5 step 10), so carrying it would be storing a derived quantity — the exact
   // thing §111.5 forbids an effect from writing to.
   hash: spatialHash(HASH_BUCKET_BITS, ENEMY_POOL),
-  arc: { cooldown: w.arc.cooldown },
+  arc: { cooldown: w.arc.cooldown, firedAt: w.arc.firedAt, aimX: w.arc.aimX, aimY: w.arc.aimY },
   spawnDebt: w.spawnDebt,
   paused: w.paused,
   resumeGap: w.resumeGap,

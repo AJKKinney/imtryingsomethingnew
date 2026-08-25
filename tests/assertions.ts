@@ -87,7 +87,14 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // game rendered with a stray mark after it, because a stroke is centred on its path
   // and half of it landed in the cell the packer put alongside. Legibility is a
   // different claim from provenance and gets its own row (§145.6).
-  1: 25, 2: 42, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // Phase 1 was 25 and is 26: A-055 asserts a weapon that fires leaves something to
+  // see. §46.2 specified a distinct FIRING SIGNATURE per emitter in the same pass
+  // that specified the silhouettes, and only the silhouettes were built — so the
+  // renderer drew the substrate, the enemies and the player, and Arc resolving
+  // instantly (§38.2) meant a shot left nothing behind. Three shots a second, and
+  // the only visible consequence was an enemy that stopped existing.
+  1: 26, 2: 42, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -270,6 +277,9 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-054', phase: 1, tier: 'unit', cadence: 'push', source: '§140.2, §147.1', status: 'implemented',
       statement: 'Every glyph\'s ink, expanded by half its stroke width, lies inside its own packed cell — so a blit carries that glyph and nothing else — and a mirrored pair of glyphs is actually mirrored.',
       why: 'A stroke is centred on its path, so a glyph inked at column 0 paints half a line width OUTSIDE its cell and into whatever the shelf packer put beside it. Every blit then carried a sliver of an arbitrary neighbour: an I acquired a stem and read as an E, an O acquired one and read as a D, and every whole-word label ended in a mark nobody wrote. It survived because §140.2\'s checks ask where the face came from and how many bytes it costs, §147.1\'s ask how large the atlas is, and none of them looks at what a blit contains — the same shape as §85.4 auditing that the heat channel survives colour loss and never that it carries the right number. The mirror half is §133.6\'s rule that a shape is guarded by an ASYMMETRY rather than a value: the slash pair was authored as two identical strokes, so every ratio in the game printed as 6\\2, and no per-glyph check could see it because each glyph was individually on the grid and individually legible.' }),
+  a({ id: 'A-055', phase: 1, tier: 'unit', cadence: 'push', source: '§46.2, §121.5', status: 'implemented',
+      statement: 'A shot is recorded by the simulation and drawn by the renderer as the CONE it damaged, from the same boundary constant both use — FILLED, and held long enough to cover half the weapon\'s own cadence — while the hit flash costs no additional draw.',
+      why: '§46.2 required a distinct firing signature per emitter in the pass that required distinct silhouettes, and only the silhouettes were built. Arc resolves instantly (§38.2), so a shot left no projectile behind and the simulation recorded nothing a renderer could read: the bullet heaven drew no weapons at all, three times a second, and the only visible consequence of firing was an enemy that stopped existing. The cone rather than a beam is the point — §121.5 measured Arc\'s coverage at 0.17 of the circle against 1.00 for five of the roster, in the emitter that opens every run, and coverage is precisely the axis §33.3\'s DPS table cannot see and the reason §89.3 retired it as a gate. Drawing the volume from the same constant the damage test uses is §134.6\'s rule pointed at the field: two copies of the boundary are two boundaries waiting to drift, and a wedge that does not match what it kills is §2\'s cheated. The fill and the window are both measured rather than chosen: a stroked outline is a shape to interpret in a frame already holding hundreds of stroked silhouettes, and at 3 shots a second a 6-tick flash leaves the weapon dark for 77% of frames — which is what the first playtest reported as *I cannot see any weapons firing* against a renderer that was already drawing it.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

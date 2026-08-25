@@ -28,6 +28,7 @@ export interface Ctx {
   moveTo(x: number, y: number): void
   lineTo(x: number, y: number): void
   stroke(): void
+  fill(): void
   drawImage(
     source: unknown,
     sx: number, sy: number, sw: number, sh: number,
@@ -78,6 +79,7 @@ export const canvas2d = (canvas: CanvasLike, background: string): Canvas2DSurfac
     // batches rather than of what reaches the screen.
     setFill(colour) { ctx.fillStyle = colour },
     fillRect(x, y, w, h) { ctx.fillRect(x, y, w, h); surface.draws++ },
+    fill() { ctx.fill(); surface.draws++ },
     blit(source, sx, sy, sw, sh, dx, dy) {
       const from = source as Canvas2DSurface
       ctx.drawImage(from.canvas, sx, sy, sw, sh, dx, dy, sw, sh)

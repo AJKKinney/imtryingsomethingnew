@@ -81,6 +81,31 @@ shape** — §108.3's explicit per-core geometry, the thing that says where a pl
 all — stopped being visible. It scales, with a floor that leaves §86.2's measured bezel
 exactly where it was.
 
+**6. The bullet heaven rendered no weapons — A-055.** Reported separately, in four words:
+*I cannot see any weapons firing.* §46.2 required a distinct **firing signature** per emitter
+in the same pass that required distinct silhouettes, and only the silhouettes were built —
+`renderFrame` drew the substrate, the enemies and the player, and that was all of it. Arc
+resolves instantly (§38.2), so a shot left no projectile behind, **and `world.arc` held a
+cooldown and nothing else**, so there was nothing a renderer could have drawn even if one had
+tried. Three shots a second, and the only visible consequence of firing was an enemy that
+stopped existing. The simulation now stamps the tick, the aim and every enemy it hurt; the
+renderer draws the **cone** rather than a beam to the target, because §121.5 measures Arc's
+coverage at **0.17 of the circle** against 1.00 for five of the roster and coverage is exactly
+the axis §33.3's DPS table cannot see — a beam says a shot happened, the wedge says what the
+weapon *is* — and it is drawn from §14's own half-angle constant, so the picture and the
+predicate are one object (§134.6). The hit flash costs no draw at all: it changes the stroke
+of a silhouette already being drawn.
+
+**And the first fix was not visible either, which is the finding.** Shipped as a 2 px stroked
+outline held for six ticks, the cone was *present* and rare: at 3 shots a second a six-tick
+flash leaves the weapon dark in **77% of frames**, and an outline in a frame already holding
+hundreds of stroked silhouettes is a shape to interpret rather than a discharge. Measured over
+1,800 ticks of the real simulation — 84 shots, and the wedge on screen in 23% of frames. It is
+now **filled as well as stroked and held for ten ticks**, which covers half of Arc's own
+cadence and puts it on screen in **42%** of frames; the assertion states that band rather than
+the integer, because six was never wrong as a *value* — it was wrong against a cadence nobody
+had divided it by. Both are render constants, so §14's golden hash does not move.
+
 **Next: re-gate.** §82.1's four criteria, asked again, on this build: *tool or chore?* ≥ 3/5 ·
 every cell and rotation reachable on a gamepad · **the tester can predict a placement's
 consequence before making it** · and **they move something without being asked to**. §70.3's
@@ -135,13 +160,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 24/25 implemented · 25 planned (seeded)
+phase 1: 25/26 implemented · 26 planned (seeded)
 phase 2: 18/29 implemented · 42 planned (29 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   42/54 implemented · 271 planned
+total:   43/55 implemented · 272 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -323,6 +348,23 @@ saw no consequence.** Only *the point* of the thing landed.
 | *could not read the picture* | The core is drawn at last (A-053) · every word stopped carrying a stray mark and `/` stopped printing as `\` (A-054) · the substrate dot scales with the cell, so the board has a visible shape |
 | *could read it but had no move* | The verbs are printed on the canvas · the cursor is white and no longer sits inside the core · it opens adjacent to the core, where the first placement wants to go |
 | *could act but saw no consequence* | The AFTER line states the exact projected power and the heat before and after, for the cell under the cursor, before the commit |
+
+**Checkpoint 1, second report: *"I cannot see any weapons firing."*** Four words, and the
+cheapest possible demonstration that a *feature* and a *frame* are different objects. The
+weapon fired at 3/s throughout — 84 shots over the 30 seconds this repository now measures —
+and §46.2 asked for a **firing signature** in the pass that asked for silhouettes, so the
+absence was specified rather than overlooked (A-055).
+
+| The marker | What changed |
+|---|---|
+| *no weapons firing* | The simulation records the shot — its tick, its aim, and every enemy it hurt — where `world.arc` previously held a cooldown and nothing else · the renderer draws the **damage volume** as a fading cone, from the same half-angle constant the damage test uses · a hit enemy flashes white, for free |
+| *still no weapons firing* | The wedge is **filled** rather than outlined, and held for **ten ticks rather than six** — half of Arc's own cadence, which takes it from 23% of frames to 42%. Six was never wrong as a value; it was wrong against a cadence nobody had divided it by |
+
+**The second half of that row is the more useful finding.** The first fix was correct, tested,
+and reported as a failure — because a channel is only a channel at the rate the player meets
+it, and §52.3's effect-size floor has a perceptibility half (§117.5) that no pass had ever
+pointed at a *render* constant. The assertion now states the **band** — a signature covers at
+least half its weapon's cadence and never more than all of it — rather than the integer.
 
 **The link did not fail before this and it did not "work" either**, which is the distinction
 worth keeping: three fault reports earlier in the same checkpoint found a render-blocking

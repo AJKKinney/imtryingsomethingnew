@@ -18,7 +18,7 @@
  */
 import { distanceSquared } from '../core/fixedmath.ts'
 import { queryRadius } from '../core/spatialhash.ts'
-import { EMITTERS } from '../data/emitters.ts'
+import { ARC_HALF_ANGLE_COS, EMITTERS } from '../data/emitters.ts'
 import { DT } from '../core/tick.ts'
 import type { World } from '../core/world.ts'
 
@@ -27,12 +27,8 @@ export const WRITES: readonly string[] = ['arc', 'enemies']
 
 const ARC = EMITTERS.arc
 
-/**
- * The cosine of half the cone's angle, so the test is one dot product and no inverse
- * trigonometry. §14's policy permits `Math.sqrt` and nothing transcendental, and
- * `cos(30 degrees)` is a constant the build can bake rather than a call.
- */
-export const ARC_HALF_ANGLE_COS = 0.8660254037844387
+/** Re-exported so a test reads the boundary from the module that applies it. */
+export { ARC_HALF_ANGLE_COS }
 
 const scratch: number[] = []
 
@@ -77,6 +73,14 @@ export const step = (world: World): void => {
   const aimX = (target.x - player.x) / aimD
   const aimY = (target.y - player.y) / aimD
 
+  // §46.2's firing signature, recorded rather than discarded. Arc resolves instantly
+  // (§38.2), so without this the only trace a shot leaves is an hp change on an
+  // entity that draws identically either way — which is how a bullet heaven came to
+  // render no weapons at all. A stamp and a direction; the renderer owns the rest.
+  arc.firedAt = world.tick
+  arc.aimX = aimX
+  arc.aimY = aimY
+
   // The cone is a DAMAGE VOLUME oriented by the targeting, not a firing arc oriented
   // by facing. §8.2 settles it twice over: L3 widens the cone 60 -> 120 degrees, and
   // L5 adds "+1 opposed cone" — a second cone at 180 degrees, which is only a
@@ -94,5 +98,6 @@ export const step = (world: World): void => {
     const d = Math.sqrt(d2)
     if ((dx / d) * aimX + (dy / d) * aimY < ARC_HALF_ANGLE_COS) continue
     e.hp -= ARC.damage
+    e.hurtAt = world.tick
   }
 }

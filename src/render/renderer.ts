@@ -12,6 +12,7 @@
  * thing entirely. That is the whole content of this file at commit 7.
  */
 import { CORRUPTION, PLAYER, SUBSTRATE, enemyHue } from '../gen/palette.ts'
+import { ARC_HALF_ANGLE_COS, EMITTERS } from '../data/emitters.ts'
 import { silhouette, type Silhouette } from '../gen/shapes.ts'
 import { enemyAt } from '../data/enemies.ts'
 import { PLAYER_HITBOX } from '../data/player.ts'
@@ -92,6 +93,81 @@ const drawSubstrate = (target: Surface, cam: Camera): void => {
   target.stroke()
 }
 
+
+/**
+ * §46.2's firing signature, which was specified in pass 46 and never built.
+ *
+ * The bullet heaven rendered **no weapons at all**: the frame drew the substrate, the
+ * enemies and the player, and Arc resolves instantly (§38.2) so a shot left nothing
+ * behind for anything to draw. The simulation was firing three times a second and the
+ * only visible consequence was an enemy that stopped existing.
+ *
+ * It is drawn as the **cone**, not as a beam to the target, because the cone is the
+ * quantity that matters: §121.5 measured Arc's coverage at **0.17 of the circle**
+ * against 1.00 for five of the roster, in the emitter that opens every run, and
+ * §118.2 makes minutes 0-3 entirely Swarmers converging from every direction. A beam
+ * would show that a shot happened; the cone shows what the weapon IS, which is the
+ * half §33.3's DPS table cannot see and the reason that table was retired as a gate
+ * (§89.3). It is also honest about the mechanic: everything caught in the wedge takes
+ * the damage, so the picture and the predicate are the same object (§134.6).
+ *
+ * ONE path, so it costs one draw against §39.3's ceiling — and it fades rather than
+ * flashes, because §12's reduce-flashing rule caps luminance deltas and is mandatory
+ * to provide (§101.4), so the channel has to work for a player who has it on.
+ */
+/**
+ * Ten ticks, not six, and the number is measured rather than chosen. Arc fires at
+ * 3/s — one shot every 20 ticks at base rate — so a 6-tick flash leaves the weapon
+ * dark for 70% of frames and reads as an occasional flicker rather than as fire.
+ * At ten it covers half the cadence: the cone is present in roughly every other
+ * frame under load, which is what makes §46.2's "distinct firing signature" a
+ * signature. It stays a FADE rather than a strobe (§12's reduce-flashing rule), and
+ * it is a RENDER constant — the simulation stamps `firedAt` and never reads this, so
+ * §14's golden hash is untouched by it.
+ */
+export const ARC_FLASH_TICKS = 10
+const CONE_SEGMENTS = 8
+
+export const drawArcCone = (target: Surface, cam: Camera, world: World): void => {
+  const age = world.tick - world.arc.firedAt
+  if (world.arc.firedAt <= 0 || age < 0 || age >= ARC_FLASH_TICKS) return
+  const { aimX, aimY } = world.arc
+  if (aimX === 0 && aimY === 0) return
+
+  const fade = 1 - age / ARC_FLASH_TICKS
+  const [r, g, b] = [95, 242, 255]
+  // Filled AND stroked, which is two draws on one path and the reason §46.2's
+  // signature reads: the fill is what the eye catches in a frame already holding
+  // hundreds of stroked silhouettes, and the edge is what makes the boundary exact
+  // (§134.6 — the picture and the predicate are the same object). Both fade, and the
+  // stroke thickens with the fade, so a fresh shot is a bright wedge that collapses
+  // to a thin one rather than a strobe (§12's reduce-flashing rule).
+  target.setFill(`rgba(${r}, ${g}, ${b}, ${(fade * 0.22).toFixed(3)})`)
+  target.setStroke(`rgba(${r}, ${g}, ${b}, ${(fade * 0.95).toFixed(3)})`, 1 + fade * 2)
+
+  const cx = screenX(cam, world.player.x)
+  const cy = screenY(cam, world.player.y)
+  const reach = EMITTERS.arc.range
+  // Half the cone, from §14's own constant rather than from a second number: the
+  // simulation tests `cos >= ARC_HALF_ANGLE_COS`, so the drawn edge is the same
+  // boundary the damage volume uses and cannot drift from it.
+  const half = Math.acos(ARC_HALF_ANGLE_COS)
+
+  target.beginPath()
+  target.moveTo(cx, cy)
+  for (let i = 0; i <= CONE_SEGMENTS; i++) {
+    const a = -half + (2 * half * i) / CONE_SEGMENTS
+    const cos = Math.cos(a)
+    const sin = Math.sin(a)
+    const dx = aimX * cos - aimY * sin
+    const dy = aimX * sin + aimY * cos
+    target.lineTo(cx + dx * reach, cy + dy * reach)
+  }
+  target.lineTo(cx, cy)
+  target.fill()
+  target.stroke()
+}
+
 /**
  * Draw one frame. Returns the draw count, so §39.3's ceiling is measured by the test
  * that renders rather than asserted by the document that budgets.
@@ -101,6 +177,9 @@ export const renderFrame = (target: Surface, cam: Camera, world: World): number 
   target.clear()
   follow(cam, world.player.x, world.player.y, world.player.vx, world.player.vy)
   drawSubstrate(target, cam)
+  // Under the entities: §12's bold silhouettes stay the loudest thing on the screen,
+  // and a wedge over the top of the crowd would hide what it is firing into.
+  drawArcCone(target, cam, world)
 
   const { enemies } = world
   for (let i = 0; i < enemies.count; i++) {
@@ -112,7 +191,12 @@ export const renderFrame = (target: Surface, cam: Camera, world: World): number 
     // simulation rule and this is a rendering one, and conflating them is how a
     // budget stops describing the frame.
     if (sx < -32 || sy < -32 || sx > PLAY_WIDTH + 32 || sy > PLAY_HEIGHT + 32) continue
-    target.setStroke(enemyHue(e.kind), ENTITY_STROKE)
+    // §12 lists the feedback channel as damage numbers, hit flash and death particles,
+    // and §109.4 rules out per-enemy health bars on the draw budget — so the flash is
+    // the only thing telling a player their shot connected. It costs NO extra draw,
+    // because it changes the stroke of a silhouette already being drawn.
+    const hit = e.hurtAt > 0 && world.tick - e.hurtAt < ARC_FLASH_TICKS
+    target.setStroke(hit ? '#ffffff' : enemyHue(e.kind), hit ? ENTITY_STROKE + 1 : ENTITY_STROKE)
     strokeSilhouette(target, shapeFor(e.kind, false), sx, sy, enemyAt(e.kind).hitbox)
   }
 

@@ -24,6 +24,17 @@ export interface Entity extends Pooled {
   vy: number
   hp: number
   flags: number
+  /**
+   * §46.2's hit flash: the tick this entity last took damage, or 0.
+   *
+   * A STAMP rather than a countdown, so nothing has to decrement it and no step
+   * acquires a write it does not otherwise need — the renderer compares it against
+   * `world.tick` and that is the whole mechanism. It is deliberately absent from
+   * §14's world hash (`core/replay`): it is DERIVED (§111.5) from an hp change the
+   * hash already covers, and hashing an echo would make the golden figure sensitive
+   * to a field no rule reads.
+   */
+  hurtAt: number
 }
 
 /** §9's constants live in `src/data/player.ts`; this is the state they act on. */
@@ -63,6 +74,21 @@ export interface WeaponState {
   /** Seconds until the next shot. Counted down in seconds, not ticks, so §8.2's
    *  rates read as they are written and a rate change is a data change. */
   cooldown: number
+  /**
+   * The tick of the last shot, and the unit vector it was aimed along.
+   *
+   * §46.2 requires each emitter to have a distinct **firing signature** as well as a
+   * distinct silhouette, and Arc resolves instantly (§38.2) — so a shot leaves no
+   * projectile behind it and the simulation recorded nothing a renderer could read.
+   * The whole of §121.5's argument for Arc is that its cone covers **0.17 of the
+   * circle** against 1.00 for five of the roster, which is the quantity that decides
+   * whether the weapon fires at the threat at all; a player who cannot see the cone
+   * cannot see the trade, and §33.3's DPS table is exactly the view that cannot show
+   * it either.
+   */
+  firedAt: number
+  aimX: number
+  aimY: number
 }
 
 /**
@@ -138,7 +164,8 @@ export const HASH_BUCKET_BITS = 11
 
 const emptyFrame = (): InputFrame => ({ moveX: 0, moveY: 0, dash: false })
 
-const emptyEntity = (): Entity => ({ id: 0, kind: 0, x: 0, y: 0, vx: 0, vy: 0, hp: 0, flags: 0 })
+const emptyEntity = (): Entity =>
+  ({ id: 0, kind: 0, x: 0, y: 0, vx: 0, vy: 0, hp: 0, flags: 0, hurtAt: 0 })
 
 /**
  * A run's initial state, and the whole of §14's first input.
@@ -164,7 +191,7 @@ export const createWorld = (seed: number): World => ({
   },
   enemies: pool<Entity>(ENEMY_POOL, emptyEntity),
   hash: spatialHash(HASH_BUCKET_BITS, ENEMY_POOL),
-  arc: { cooldown: 0 },
+  arc: { cooldown: 0, firedAt: 0, aimX: 0, aimY: -1 },
   spawnDebt: 0,
   paused: false,
   resumeGap: 0,
