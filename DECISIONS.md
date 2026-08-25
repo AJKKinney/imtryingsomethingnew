@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**86 decisions · 55 supersede an earlier one · 64%.**
+**87 decisions · 56 supersede an earlier one · 64%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -108,6 +108,7 @@ resume budget honest as this file grows.
 | an island is legal, and is the second path to zero power | power | commit 10 | §135.1D |
 | the screen graph has three entry points | ui | commit 10 | §101.6 |
 | cooling ranks are linear between the published endpoints | heat | commit 10 | — |
+| the heat channel carries brightness, not only hue | render | commit 10 | §85.4 |
 | one board, two tabs | ui | commit 10 | §82.2 |
 | engagement is measured at Pulse's own scale | heat | commit 10 | — |
 | a STEP declaration is a claim to be wired | build | commit 10 | §142.6 |
@@ -226,7 +227,7 @@ Heat is owned by the COMPONENT and travels with it. Taken the other way the move
 A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags, comparison set and store copy follow; auto-placement's "podcast venue" justification is retired and it stands on onboarding and accessibility, which are real.
 
 
-### render — 8
+### render — 9
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -259,6 +260,10 @@ GENERATED: a 7x9 stroke table, ~900 bytes, emitted at build time by the tool tha
 **the boot atlas** — §147.1 *(supersedes §140.2)*
 
 The locale-invariant Latin glyph set at three scales plus §102.2's 131 labels as WHOLE WORDS in the active locale — 0.8 MB in every locale, because a glyph set grows with the script and a label does not. CJK prose renders with `fillText` on entity-free screens only.
+
+**the heat channel carries brightness, not only hue** — commit 10 *(supersedes §85.4)*
+
+§85.1 lists the heat channel as "hue AND brightness — brightness alone survives" and §12's ramp runs cyan to deep red, and rendered as hue alone the second half is false: the ramp's luminance RISES to the amber in the middle and FALLS to the red at the end, so under total colour loss a cold cell and a melting one are one mid-grey and the cold one is the louder of the two. The tint composites over the substrate at an alpha climbing from a floor to full at meltdown. Hue says where on the ladder; brightness says how far, monotonically. Found by looking at the thing rather than at the table — a board whose safest cells were its brightest.
 
 
 ### field — 11
@@ -450,7 +455,7 @@ The RUN tab and the WORKBENCH tab share ONE board object, so the difference betw
 
 **the prototype carries its own tick gate** — commit 10
 
-The workbench advances heat on whole DT steps against an interval of TICK_MS / 0.2, because §9 runs the board at 20% time and §142.4 makes a time-scale a TICK GATE rather than a `dt` multiplier. A prototype with no world still obeys the rule the world obeys, so the heat curve a playtester sees at the gate is the curve the loop will produce when it wires the board — and nothing here has to be un-learned later.
+The workbench advances heat on whole DT steps, because §142.4 makes a time-scale a TICK GATE rather than a `dt` multiplier and a prototype with no world still obeys the rule the world obeys. It runs at REAL TIME rather than §9's 20%, which is the scope of that rule rather than an exception to it: twenty percent exists so that opening the board INSIDE A RUN costs something, §99.3 already makes it a setting rather than a constant, and there is no run here to slow it against. At 0.2 the heat model's 1.5-second time constant is seven and a half seconds of wall clock and settling takes twenty — so the instrument §81.3 built to show a placement's whole thermal range in ten seconds would take longer than the run it stands in for.
 
 **a screen title is a label, its contents are prose** — commit 9
 

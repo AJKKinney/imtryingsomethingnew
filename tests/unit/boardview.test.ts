@@ -13,8 +13,8 @@
 import { describe, expect, it } from 'vitest'
 import { stubSurface } from '../surface.ts'
 import {
-  BEZEL_BOARD_DRAWS, boosted, dashesFor, drawBoard, frameOf, heatTint, traceWidth,
-  type BoardView,
+  BEZEL_BOARD_DRAWS, boosted, dashesFor, drawBoard, frameOf, heatAlpha, heatFill,
+  heatTint, traceWidth, type BoardView,
 } from '../../src/render/boardview.ts'
 import { addHeat, cellsOf, createBoard, key, place, thresholds } from '../../src/grid/board.ts'
 import { cellHeat, regionHeat } from '../../src/grid/heat.ts'
@@ -45,7 +45,14 @@ const fillsByCell = (
   return out
 }
 
-const rampIndex = (colour: string): number => HEAT_RAMP.indexOf(colour)
+/** The ramp index a composited fill was built from — hue, independent of alpha. */
+const rampIndex = (colour: string): number =>
+  HEAT_RAMP.findIndex((hue) => colour.startsWith(huePrefix(hue)))
+
+const huePrefix = (hex: string): string => {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+  return `rgba(${r}, ${g}, ${b},`
+}
 
 describe('A-050 · §134.2 the cell fill renders the DERIVED region heat', () => {
   it('tints a cold cell that a hot neighbour’s region reaches', () => {
@@ -70,8 +77,8 @@ describe('A-050 · §134.2 the cell fill renders the DERIVED region heat', () =>
     const surface = stubSurface(400, 400)
     drawBoard(surface, board, VIEW, frameOf(board))
     const fills = fillsByCell(surface.fills, VIEW)
-    expect(fills.get(key(at))).toBe(heatTint(board, regionHeat(board, at)))
-    expect(fills.get(key(at))).not.toBe(HEAT_RAMP[0])
+    expect(fills.get(key(at))).toBe(heatFill(board, regionHeat(board, at)))
+    expect(rampIndex(fills.get(key(at)) ?? '')).toBeGreaterThan(0)
   })
 
   it('fills exactly at the overclock tint for exactly the overclocked cells', () => {
@@ -87,7 +94,7 @@ describe('A-050 · §134.2 the cell fill renders the DERIVED region heat', () =>
     for (const p of board.placements) addHeat(p, p.anchor.x === 3 ? 1 : 5)
 
     const t = thresholds(board)
-    const overclockTint = rampIndex(heatTint(board, t.overclock))
+    const overclockTint = HEAT_RAMP.indexOf(heatTint(board, t.overclock))
     expect(overclockTint).toBeGreaterThan(0)
 
     const surface = stubSurface(400, 400)
@@ -105,6 +112,26 @@ describe('A-050 · §134.2 the cell fill renders the DERIVED region heat', () =>
     // And it is a contour rather than a highlight of the components themselves: the
     // cold Arc at (3,3) is not in it, and no empty cell is filled at all.
     expect(drawnHot).not.toContain(key({ x: 3, y: 3 }))
+  })
+
+  it('carries brightness monotone in heat, so the greyscale reading survives', () => {
+    // §85.1 claims "hue AND brightness — brightness alone survives" and the ramp does
+    // not deliver the second: its luminance RISES to the amber and FALLS to the red,
+    // so under total colour loss a cold cell and a melting one are one mid-grey and
+    // the cold one is the louder. The asymmetry is what is asserted, not the values —
+    // §35.3, and §133.6 for the same reason a quirk is guarded by its shape.
+    const board = createBoard('lattice')
+    const t = thresholds(board)
+    const steps = [0, t.overclock / 2, t.overclock, t.meltdown - 1, t.meltdown]
+    const alphas = steps.map((heat) => heatAlpha(board, heat))
+    for (let i = 1; i < alphas.length; i++) {
+      expect(alphas[i] ?? 0, `heat ${steps[i]}`).toBeGreaterThan(alphas[i - 1] ?? 0)
+    }
+    expect(alphas[0]).toBeGreaterThan(0)
+    expect(alphas[alphas.length - 1]).toBeCloseTo(1, 6)
+    // Past meltdown it saturates rather than overshooting: a runaway region is already
+    // as loud as the channel goes, and §116.4 gives it a state of its own to say so.
+    expect(heatAlpha(board, t.meltdown * 4)).toBeCloseTo(1, 6)
   })
 
   it('draws an empty cell as substrate and never as a heat tint', () => {

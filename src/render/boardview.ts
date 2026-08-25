@@ -99,6 +99,42 @@ export const heatTint = (board: Board, heat: number): string => {
 }
 
 /**
+ * §85.4's other half, which the ramp alone does not deliver: **brightness, monotone
+ * in heat.**
+ *
+ * §85.1 lists the heat channel as *"hue AND brightness — brightness alone survives"*,
+ * and §12's ambient scale runs cyan to deep red. Rendered as hue alone that claim is
+ * false, and measurably so: the ramp's luminance rises to the amber in the middle and
+ * falls to the red at the end, so under total colour loss a cold cell and a melting
+ * one are the same mid-grey and the cold one is the LOUDER of the two. A board whose
+ * safest cells are its brightest is §2's *confused* on the surface §68 calls the
+ * product.
+ *
+ * So the tint is composited over the substrate at an alpha that climbs from a floor
+ * to full at the meltdown threshold. Hue still says WHERE on the ladder; brightness
+ * now says HOW FAR, monotonically, and it is the half that survives the greyscale.
+ */
+export const HEAT_FLOOR_ALPHA = 0.14
+
+const rgb = (hex: string): readonly [number, number, number] => [
+  Number.parseInt(hex.slice(1, 3), 16),
+  Number.parseInt(hex.slice(3, 5), 16),
+  Number.parseInt(hex.slice(5, 7), 16),
+]
+
+export const heatAlpha = (board: Board, heat: number): number => {
+  const span = thresholds(board).meltdown
+  const at = span <= 0 ? 0 : heat / span
+  const clamped = at < 0 ? 0 : at > 1 ? 1 : at
+  return HEAT_FLOOR_ALPHA + (1 - HEAT_FLOOR_ALPHA) * clamped
+}
+
+export const heatFill = (board: Board, heat: number): string => {
+  const [r = 0, g = 0, b = 0] = rgb(heatTint(board, heat))
+  return `rgba(${r}, ${g}, ${b}, ${heatAlpha(board, heat).toFixed(3)})`
+}
+
+/**
  * §85.2's central decision, in one function: **the trace's width is `delivered / draw`.**
  *
  * A component at 100% has a fat bright feed and one at 33% a visibly starved thread,
@@ -195,7 +231,7 @@ export const drawBoard = (
       surface.fillRect(p.x - SUBSTRATE_DOT / 2, p.y - SUBSTRATE_DOT / 2, SUBSTRATE_DOT, SUBSTRATE_DOT)
       continue
     }
-    surface.setFill(heatTint(board, frame.heat.get(key(c)) ?? 0))
+    surface.setFill(heatFill(board, frame.heat.get(key(c)) ?? 0))
     const inset = view.cell * 0.06
     surface.fillRect(
       p.x - view.cell / 2 + inset, p.y - view.cell / 2 + inset,

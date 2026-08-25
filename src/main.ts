@@ -136,8 +136,11 @@ const boot = (): void => {
     x: PLAY_WIDTH - BOARD_TILE - 8, y: PLAY_HEIGHT + 4, cell: BOARD_TILE / 5, detail: 'bezel',
   }
   const workbench = {
-    view: { x: 56, y: 56, cell: 48, detail: 'full' } as BoardView,
-    panelX: 340, panelY: 80, scale: LABEL_SCALE,
+    // Centred vertically in the play area, with §69.3's panel beside it rather than
+    // under it: the board and its numbers are read together, and a panel below the
+    // fold would be the eight-quantities problem solved and then hidden.
+    view: { x: 48, y: 84, cell: 52, detail: 'full' } as BoardView,
+    panelX: 344, panelY: 108, scale: LABEL_SCALE,
   }
 
   let tab: 'run' | 'workbench' = 'run'
@@ -230,10 +233,17 @@ const boot = (): void => {
   }
 
   // §142.4 — the board prototype has no world, so it carries its own accumulator on
-  // the same rule: the time-scale is a TICK GATE and the step never varies. §9 runs
-  // the board at 20% time, so the target interval is TICK_MS / 0.2 and the heat model
-  // advances by whole DT steps, exactly as it will when the loop wires it.
-  const BOARD_SCALE = 0.2
+  // the same rule: the time-scale is a TICK GATE and the step never varies.
+  //
+  // And it runs at REAL TIME rather than at §9's 20%, which is not an exception to
+  // that rule but the scope of it. Twenty percent exists so that opening the board
+  // inside a run costs something — enemies keep moving — and §99.3 already makes it a
+  // SETTING rather than a constant. There is no run here to slow it against, and at
+  // 0.2 the heat model's 1.5-second time constant becomes seven and a half seconds of
+  // wall clock, so settling takes twenty: the instrument §81.3 built to show a
+  // placement's whole thermal range in ten seconds would take longer than the run it
+  // stands in for.
+  const BOARD_SCALE = 1
   let boardAccumulator = 0
 
   let last = 0
