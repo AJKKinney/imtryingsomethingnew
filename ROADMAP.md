@@ -286,12 +286,25 @@ own terms (§82.3): **twenty minutes with the board and four questions, not runs
 a board-only prototype has no runs in it and §9's five numeric thresholds cannot measure
 one. They are measured at the phase-2 gate, in context.
 
-**Before that checkpoint, one thing is asked once (§73.2):** which of a bracketing spread —
-a survivors-like, a spatial build-craft game, an engine-builder, a bullet hell — you have
-put twenty-plus hours into, and which you bounced off. It makes one person's feedback
-*interpretable* rather than merely authoritative: *"the board is a chore"* from a
-build-craft player is a design emergency, and from someone who bounced off Opus Magnum it
-is a data point about audience fit.
+**§73.2's calibration set, asked and answered before the first checkpoint:** twenty-plus
+hours in **all four** of the bracketing spread — a survivors-like, a spatial build-craft
+game, an engine-builder, a bullet hell — and **bounced off none of them**.
+
+That is an unusually clean result and it cuts both ways, so both halves are written down
+before any feedback arrives to be read against them.
+
+**What it makes readable.** A complaint from this tester is *craft*, never taste. §73.2's
+worked example — *"the board is a chore"* — has exactly one reading here: a player fluent
+in Backpack Hero **and** Opus Magnum **and** Nova Drift saying the board is a chore is
+§9's gate failing, and §70.3's ladder is the response. There is no audience-fit escape
+hatch, which is the strongest possible state for a veto to be measured in.
+
+**What it cannot answer.** This tester sits *above* the split §68.2 positioned against, so
+they cannot tell us whether the build-craft audience stays while the survivors audience
+bounces. Approval is real and is not evidence of fit. §98.6 already draws that line and it
+is now load-bearing rather than decorative: **a population says *minute seven loses
+people*, and only a person says *because the board felt like a chore*.** The population
+half arrives at phase 3b and nothing before it substitutes.
 
 ---
 
