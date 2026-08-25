@@ -324,6 +324,25 @@ const boot = (): void => {
   }, RAF_GRACE_MS)
 }
 
-if (typeof document !== 'undefined') boot()
+/**
+ * §16's boundary, arriving at its first commit rather than its scheduled one. An
+ * uncaught exception here is the whole game, and the browser reports it to a console
+ * the player cannot open — so the host records what was thrown where a page can read
+ * it back, and rethrows, because swallowing it would trade a legible failure for a
+ * silent one. The non-Error branch is not defensive padding: a thrown value that is
+ * not an Error reaches `window.onerror` with an EMPTY message, which is a failure
+ * report that says nothing at all.
+ */
+if (typeof document !== 'undefined') {
+  try {
+    boot()
+  } catch (error) {
+    const host = window as unknown as { __meltlineFault?: string }
+    host.__meltlineFault = error instanceof Error
+      ? `${error.name}: ${error.message}\n${error.stack ?? '(no stack)'}`
+      : `non-Error thrown: ${Object.prototype.toString.call(error)} ${String(error)}`
+    throw error
+  }
+}
 
 export { LABEL_SCALE }
