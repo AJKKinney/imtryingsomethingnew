@@ -178,11 +178,21 @@ const boot = (): void => {
     // Centred vertically in the play area, with §69.3's panel beside it rather than
     // under it: the board and its numbers are read together, and a panel below the
     // fold would be the eight-quantities problem solved and then hidden.
-    view: { x: 48, y: 84, cell: 52, detail: 'full' } as BoardView,
-    panelX: 344, panelY: 108, scale: LABEL_SCALE,
+    view: { x: 40, y: 56, cell: 52, detail: 'full' } as BoardView,
+    panelX: 320, panelY: 118, scale: LABEL_SCALE,
   }
 
-  let tab: 'run' | 'workbench' = 'run'
+  /**
+   * WORKBENCH opens, not RUN — reversed after the first gate, and the reason is the
+   * finding rather than a preference. §85.3 renders the board in the bezel as a
+   * 72x72 STATUS LIGHT and in the `TAB` view as an INSTRUMENT, deliberately: three
+   * channels at a glance against seven on demand. Opening on RUN therefore showed a
+   * first-time player the *least* legible view of the one thing the prototype exists
+   * to test, with combat on top of it — and §9's gate asks whether the board is a
+   * tool or a chore, which cannot be answered by someone who never saw it at full
+   * size. The link opens on the instrument; the fight is one key away.
+   */
+  let tab: 'run' | 'workbench' = 'workbench'
   const tabs: readonly [string, 'run' | 'workbench'][] = [
     ['tab-run', 'run'], ['tab-workbench', 'workbench'],
   ]

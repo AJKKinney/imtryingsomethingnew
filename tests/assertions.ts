@@ -72,7 +72,22 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // FORBIDDEN is asked once and never again. Nothing seeded held it, because the whole
   // manifest was written against a browser that either has a feature or does not — and
   // the frame the first playable link shipped into has a third state.
-  1: 24, 2: 41, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // Phase 2 was 41 and is 42: A-053 asserts the CORE is rendered, at both levels of
+  // detail. §85.1's seven channels all describe a placement, so `drawBoard` used the
+  // core's position as a trace origin and never drew the origin — invisible for as
+  // long as there is a trace to infer it from, and `createBoard` returns no
+  // placements, so run one opened on an empty grid. Costed against the increment
+  // (§145.6) rather than folded into A-050, which is about which quantity a fill
+  // carries and would have grown a second claim inside it.
+  //
+  // Phase 1 was 24 and is 25: A-054 asserts a blit carries ONLY its own glyph's ink.
+  // A-013 is about provenance and bytes — where the face comes from and that nothing
+  // third-party is vendored in — and both of its claims held while every word in the
+  // game rendered with a stray mark after it, because a stroke is centred on its path
+  // and half of it landed in the cell the packer put alongside. Legibility is a
+  // different claim from provenance and gets its own row (§145.6).
+  1: 25, 2: 42, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -249,6 +264,12 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-052', phase: 1, tier: 'unit', cadence: 'push', source: '§3, §82.1', status: 'implemented',
       statement: 'A host device API that is present but forbidden is asked exactly once: the guarded reader returns an empty list, stops calling, and never throws into the frame.',
       why: 'PRESENCE IS NOT PERMISSION. `navigator.getGamepads` exists on every modern browser, so a `typeof` check passes, and inside a frame whose permissions policy withholds the gamepad feature CALLING it throws a SecurityError. The pad poll runs first in every frame, so the first frame threw and nothing was ever drawn — and an untouched canvas is TRANSPARENT, so the page read as a game that rendered nothing rather than as a game that crashed. It reproduced nowhere, because a top-level document has no policy withholding anything. The once-only half is not tidiness: a denial cannot be revoked within a document, so a reader that keeps asking throws sixty times a second down a channel nobody is reading.' }),
+  a({ id: 'A-053', phase: 2, tier: 'unit', cadence: 'push', source: '§85.2, §131.5', status: 'implemented',
+      statement: 'The core is drawn at BOTH levels of detail, as one stroked path, and a board with zero core output draws it as an open outline rather than a closed one.',
+      why: 'Every one of §85.1\'s seven channels describes a PLACEMENT, so the core was a trace origin that was never itself rendered — invisible exactly while there is a trace to infer it from, and absent altogether on the empty board every run and every share link opens on. One path because §39.1 budgets the bezel board at 25 cells plus 24 traces plus the core, and the core\'s share of that 50 is one draw. The blackout half tests a SHAPE rather than a colour, per §85.4: an open outline is the corruption\'s side of §46.2\'s form channel, so it reads as a machine that has stopped rather than as a dimmer one, and it survives total colour loss.' }),
+  a({ id: 'A-054', phase: 1, tier: 'unit', cadence: 'push', source: '§140.2, §147.1', status: 'implemented',
+      statement: 'Every glyph\'s ink, expanded by half its stroke width, lies inside its own packed cell — so a blit carries that glyph and nothing else — and a mirrored pair of glyphs is actually mirrored.',
+      why: 'A stroke is centred on its path, so a glyph inked at column 0 paints half a line width OUTSIDE its cell and into whatever the shelf packer put beside it. Every blit then carried a sliver of an arbitrary neighbour: an I acquired a stem and read as an E, an O acquired one and read as a D, and every whole-word label ended in a mark nobody wrote. It survived because §140.2\'s checks ask where the face came from and how many bytes it costs, §147.1\'s ask how large the atlas is, and none of them looks at what a blit contains — the same shape as §85.4 auditing that the heat channel survives colour loss and never that it carries the right number. The mirror half is §133.6\'s rule that a shape is guarded by an ASYMMETRY rather than a value: the slash pair was authored as two identical strokes, so every ratio in the game printed as 6\\2, and no per-glyph check could see it because each glyph was individually on the grid and individually legible.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**89 decisions · 56 supersede an earlier one · 63%.**
+**94 decisions · 56 supersede an earlier one · 60%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -115,6 +115,11 @@ resume budget honest as this file grows.
 | the prototype carries its own tick gate | ui | commit 10 | — |
 | the first paint never waits on a scheduler | render | commit 10 | — |
 | presence is not permission | ui | commit 10 | — |
+| the core is drawn, and a blackout opens its outline | render | commit 10 | — |
+| a blit carries its own glyph and nothing else | render | commit 10 | — |
+| a mirrored glyph pair is guarded by its asymmetry | render | commit 10 | — |
+| the cursor is white and the core is cyan | ui | commit 10 | — |
+| the substrate dot scales with the cell | render | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -229,7 +234,7 @@ Heat is owned by the COMPONENT and travels with it. Taken the other way the move
 A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags, comparison set and store copy follow; auto-placement's "podcast venue" justification is retired and it stands on onboarding and accessibility, which are real.
 
 
-### render — 10
+### render — 14
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -270,6 +275,22 @@ The locale-invariant Latin glyph set at three scales plus §102.2's 131 labels a
 **the first paint never waits on a scheduler** — commit 10
 
 The host draws frame zero synchronously and keeps a timer BEHIND `requestAnimationFrame` — starting only if rAF has not fired within a second, standing down the tick it does, both driving the one `frame`. Found by shipping §71.4's commit-10 link and being told the board was blank: an embedded frame the browser is not rendering never runs rAF, so a canvas whose first paint waits on it is never touched, and an untouched canvas is TRANSPARENT — the page's own dark ground shows through and reads as a game that drew nothing. Nothing throws and nothing logs, and a top-level document always animates, so it reproduces nowhere. §14 is untouched, because this is the host choosing when to call and `dt` is still an input the host writes.
+
+**the core is drawn, and a blackout opens its outline** — commit 10
+
+Every one of §85.1's seven channels describes a PLACEMENT, so `drawBoard` used the core's position as a trace ORIGIN and never rendered the origin — invisible for exactly as long as there is a trace to infer it from, and `createBoard` returns no placements, so run one, every share link and every WORKBENCH session opened on a grid of substrate dots with nothing in the middle of them. It is ONE stroked path, at both levels of detail, because §39.1 budgets the bezel board at 25 cells plus 24 traces plus the core. §131.5's BLACKOUT is the one state that changes its shape: the outer ring opens into four brackets, because an open outline is the corruption's half of §46.2's form channel and therefore survives total colour loss where a dimmer colour would not.
+
+**a blit carries its own glyph and nothing else** — commit 10
+
+Glyph ink is inset by half a stroke width inside its packed cell. A stroke is centred on its path, so a glyph inked at column 0 painted outside its own cell and into whatever the shelf packer had put beside it — and the packer sorts by height, so the neighbour was arbitrary: an I acquired a stem and read as an E, an O acquired one and read as a D, and every whole-word label ended in a mark nobody wrote. It costs NO atlas pixels, which is why it is an inset rather than padding: §140.2's grid is seven columns and the ink occupies 0-4, so §147.1's 0.8 MB does not move. §140.2's and §147.1's existing checks all passed throughout, because they ask where the face came from and how large the atlas is and never what a blit contains — §85.4's shape exactly.
+
+**a mirrored glyph pair is guarded by its asymmetry** — commit 10
+
+Both slashes were authored as the same stroke, so every ratio in the game printed as 6\2 while each glyph was individually on the 7x9 grid and individually legible — no per-glyph check could see it. The pair is asserted on SLOPE rather than on coordinates (§133.6), which needs no reference to the grid's width and survives §141.1's wider face.
+
+**the substrate dot scales with the cell** — commit 10
+
+A dot fixed at two pixels is §83.2's finding one level down — that pass caught a 120x120 board asserted against a bezel band nobody had measured. At the bezel's 14.4 px cell two pixels is a seventh of the cell and reads; at the workbench's 52 px it is a twenty-sixth, so the board's SHAPE — §108.3's explicit per-core geometry, which is what tells a player where they may place at all — stopped being visible. The floor keeps §86.2's measured bezel exactly where it was.
 
 
 ### field — 11
@@ -433,7 +454,7 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
 
-### ui — 9
+### ui — 10
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -466,6 +487,10 @@ The workbench advances heat on whole DT steps, because §142.4 makes a time-scal
 **presence is not permission** — commit 10
 
 A host device API is asked ONCE and, if the call is refused, never again. `navigator.getGamepads` exists on every modern browser, so §81.2's pad cursor guarded it with a `typeof` check and passed — and inside a frame whose permissions policy withholds the gamepad feature, CALLING it throws a SecurityError. The poll runs first in every frame, so the first frame threw and nothing was ever drawn; an untouched canvas is TRANSPARENT, so the page read as a game that rendered nothing rather than as a game that crashed, and it reproduced nowhere because a top-level document has no policy withholding anything. §3 keeps the handheld primary and §82.1's fourth criterion is untouched: a pad works wherever the host permits one, and where it does not the keyboard is the whole interface rather than the whole page being lost to a device nobody plugged in.
+
+**the cursor is white and the core is cyan** — commit 10
+
+They were the same colour at the same weight, and the cursor opened ON the core's own cell — so the board every run opens on rendered as one indistinguishable stack of squares. The cursor takes §104.5's eighth core hue, which keeps §46.2's cool side untouched and spends the channel §104.5 already spends on identity; it is thin and sits at the cell boundary where the core is heavy and inset; and it opens on the cell ABOVE the core, where §15's decay of 1 per step makes the first placement want to go.
 
 **a screen title is a label, its contents are prose** — commit 9
 

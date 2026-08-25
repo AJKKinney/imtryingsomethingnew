@@ -59,6 +59,25 @@ export interface Atlas {
 const key = (text: string, scale: number): string => `${scale}:${text}`
 
 /**
+ * THE MOAT, and it is the reason every word in the game rendered with a stray tick
+ * after it.
+ *
+ * A stroke is centred on its path, so a glyph inked at column 0 paints half a line
+ * width to the LEFT of column 0 — outside its own packed cell and into whatever the
+ * shelf packer put beside it. Every blit then carried a sliver of its neighbour, and
+ * because the packer sorts by height rather than by meaning, which sliver a glyph
+ * picked up was arbitrary: an `I` acquired a stem and read as an `E`, an `O` acquired
+ * one and read as a `D`, and every whole-word label ended in a mark nobody wrote.
+ *
+ * The fix costs no pixels, which is why it is an inset rather than padding: §140.2's
+ * grid is 7 columns wide and the ink occupies 0..4 (the advance is 6), so every cell
+ * already carries three columns of right-hand slack. Shifting the ink right by half a
+ * stroke width uses slack that was already paid for, and §147.1's 0.8 MB — measured
+ * rather than asserted, per §96.3 — does not move at all.
+ */
+const gutter = (scale: number): number => Math.ceil(Math.max(1, scale * 0.75) / 2)
+
+/**
  * A shelf packer. Rows of uniform height, filled left to right — the simplest thing
  * that wastes little on a set this uniform, and it runs once.
  */
@@ -113,12 +132,14 @@ export const buildAtlas = (
   for (const { item } of order) {
     const cell = cells.get(key(item.text, item.scale))
     if (cell === undefined) continue
-    surface.setStroke('#ffffff', Math.max(1, item.scale * 0.75))
-    if (item.text.length === 1) strokeGlyph(surface, item.text, cell.x, cell.y, item.scale)
-    else {
-      for (let i = 0; i < item.text.length; i++) {
-        strokeGlyph(surface, item.text[i] ?? ' ', cell.x + i * GLYPH_ADVANCE * item.scale, cell.y, item.scale)
-      }
+    const width = Math.max(1, item.scale * 0.75)
+    const inset = gutter(item.scale)
+    surface.setStroke('#ffffff', width)
+    for (let i = 0; i < item.text.length; i++) {
+      strokeGlyph(
+        surface, item.text[i] ?? ' ',
+        cell.x + inset + i * GLYPH_ADVANCE * item.scale, cell.y, item.scale,
+      )
     }
   }
   surface.resetDraws()

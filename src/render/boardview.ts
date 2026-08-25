@@ -66,8 +66,18 @@ export interface BoardView {
   readonly detail: Detail
 }
 
-/** The dotted substrate an empty cell is drawn on — the same material as the field. */
-export const SUBSTRATE_DOT = 2
+/**
+ * The dotted substrate an empty cell is drawn on — the same material as the field.
+ *
+ * It SCALES with the cell, which is the same defect §83.2 caught in the board itself:
+ * §76.4 asserted 120x120 against a bezel band nobody had measured, and a dot fixed at
+ * two pixels is that number one level down. At the bezel's 14.4 px cell two pixels is
+ * a seventh of the cell and reads; at the workbench's 52 px it is a twenty-sixth, and
+ * the board's SHAPE — §108.3's explicit per-core geometry, the thing that tells a
+ * player where they may place at all — stops being visible on the surface §68 calls
+ * the product. The floor keeps the bezel exactly where §86.2 measured it.
+ */
+export const substrateDot = (view: BoardView): number => Math.max(2, view.cell * 0.1)
 
 export interface BoardFrame {
   readonly power: PowerField
@@ -190,6 +200,67 @@ const strokeSegment = (
   surface.stroke()
 }
 
+/**
+ * The core, which no pass ever asked to be drawn — and it is the only thing on an
+ * empty board.
+ *
+ * §85.1 lists seven channels and every one of them describes a **placement**: the
+ * cell's fill, the component's glyph, the trace's width, the connector, the notch.
+ * So `drawBoard` used the core's position as a trace ORIGIN and never rendered the
+ * origin, which is invisible for as long as there is a trace to infer it from — and
+ * `createBoard` returns `placements: []`, so **run one opens on a grid of substrate
+ * dots with nothing in the middle of it.** §8's hook is *power flood-fills from the
+ * core*, §76 asks whether the player wants to touch the thing before they know what
+ * it does, and the answer to both was a blank square.
+ *
+ * It is **one stroked path** — an outer ring and an inner ring, concentric — because
+ * §39.1 budgets the bezel board at *25 cells + 24 traces + the core* and the core's
+ * share of that 50 is one draw. Concentric rather than single keeps it distinct from
+ * a component glyph, which is one open square at a smaller radius, while staying
+ * inside §85.2's constraint on everything the machine draws: symmetric, closed and
+ * axis-aligned, which IS §46.2's friend/foe language rather than a decoration on it.
+ *
+ * **§131.5's BLACKOUT is the one state that changes the shape.** Zero core output is
+ * reachable by exactly one path (§135.1D), it takes the whole board dark, and it is
+ * the moment the player most needs to know where to send §2.2A's reboot order — so
+ * the outer ring opens into four corner brackets. An OPEN outline is the corruption's
+ * half of §46.2's form channel, which is why it reads as *not a working machine*
+ * under total colour loss and not merely as a dimmer one.
+ */
+export const drawCore = (surface: Surface, board: Board, view: BoardView): number => {
+  const before = surface.draws
+  const centre = at(view, CORES[board.core].corePosition)
+  const outer = view.cell * 0.40
+  const inner = view.cell * 0.16
+  const dark = board.coreOutput <= 0
+  surface.setStroke(PLAYER, Math.max(1.5, view.cell * 0.08))
+  surface.beginPath()
+  if (dark) {
+    // Four brackets: the same square with its sides cut out of it.
+    const arm = outer * 0.5
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const x = centre.x + outer * (sx ?? 0)
+      const y = centre.y + outer * (sy ?? 0)
+      surface.moveTo(x - arm * (sx ?? 0), y)
+      surface.lineTo(x, y)
+      surface.lineTo(x, y - arm * (sy ?? 0))
+    }
+  } else {
+    surface.moveTo(centre.x - outer, centre.y - outer)
+    surface.lineTo(centre.x + outer, centre.y - outer)
+    surface.lineTo(centre.x + outer, centre.y + outer)
+    surface.lineTo(centre.x - outer, centre.y + outer)
+    surface.lineTo(centre.x - outer, centre.y - outer)
+  }
+  surface.moveTo(centre.x - inner, centre.y - inner)
+  surface.lineTo(centre.x + inner, centre.y - inner)
+  surface.lineTo(centre.x + inner, centre.y + inner)
+  surface.lineTo(centre.x - inner, centre.y + inner)
+  surface.lineTo(centre.x - inner, centre.y - inner)
+  surface.stroke()
+  return surface.draws - before
+}
+
 const isAmplifier = (id: ComponentId): boolean => id in AMPLIFIERS
 
 /** The emitters an amplifier is boosting: orthogonally adjacent, N/E/S/W (§14). */
@@ -228,7 +299,8 @@ export const drawBoard = (
     const p = at(view, c)
     if (!occupied.has(key(c))) {
       surface.setFill(SUBSTRATE)
-      surface.fillRect(p.x - SUBSTRATE_DOT / 2, p.y - SUBSTRATE_DOT / 2, SUBSTRATE_DOT, SUBSTRATE_DOT)
+      const dot = substrateDot(view)
+      surface.fillRect(p.x - dot / 2, p.y - dot / 2, dot, dot)
       continue
     }
     surface.setFill(heatFill(board, frame.heat.get(key(c)) ?? 0))
@@ -238,6 +310,10 @@ export const drawBoard = (
       view.cell - inset * 2, view.cell - inset * 2,
     )
   }
+
+  // 1b. The core. Drawn at BOTH levels of detail and before the traces, because it
+  //     is the one object an empty board has and every trace begins inside it.
+  drawCore(surface, board, view)
 
   // 2. The traces: one per component, from the core outward, at `delivered / draw`.
   //    An ISLAND has no trace at all, which is the loudest thing this grammar can

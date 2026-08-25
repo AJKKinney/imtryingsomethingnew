@@ -7,7 +7,7 @@
  * the rule; this is what makes the rule cheap to obey.
  */
 export {
-  cellsOf, createBoard, drawOf, key, mask, move, place, scrap, thresholds,
+  cellsOf, createBoard, drawOf, key, mask, move, place, rotate, scrap, shapeOf, thresholds,
 } from '../grid/board.ts'
 export type { Board, Rotation, Placement } from '../grid/board.ts'
 export type { Cell } from '../data/cores.ts'

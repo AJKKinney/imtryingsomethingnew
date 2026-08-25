@@ -18,71 +18,76 @@ that writes outside its region fails CI in the same breath as a hand edit inside
 
 ## IN PROGRESS:
 
-Nothing. **Commit 10 landed green**: the board — grid, 0-1 BFS power, region heat rendered
-as the **derived** 3×3 sum (§134.2), placement, §112.2's move verb, scrapping, §69.3's
-inspect mode, §76.2's causal juice, a gamepad cell cursor, and §115.5's engagement slider —
-shipped as **§82.2's one link with two tabs**.
+Nothing. **§9's gate ran at session 3 (§81.3) and it failed.** §70.3's ladder is
+pre-committed for exactly this — *first failure → redesign the board UX once and re-gate* —
+and this commit is that redesign. The re-gate has not been run yet; that is the next thing
+that happens, and it is the only thing that decides whether the ladder advances.
 
-**The two tabs share one board object**, and that is the whole demonstration: the RUN tab
-drives its engagement from the crowd inside §51.3's own 120 u circle, the WORKBENCH tab
-drives it from your hand, and the machine on both sides is the same machine. §51.1's
-property — *a fixed board heats up as the run escalates with no scaling rule anywhere* — is
-visible in ten seconds rather than in twenty minutes, which is why §81.3 calls the slider a
-**better instrument for §9's question than combat is**, not a substitute for it.
+**The report, in the tester's words: *"I have no idea what I am doing or what is happening
+in the game."*** Against §82.1's diagnostic, all three failures were present at once — *I
+could not read the picture · I could read it but had no move · I could act but saw no
+consequence* — which is not three complaints but one: nothing on the surface said what any
+of it was. §73.2's calibration makes the reading unambiguous rather than merely
+authoritative: this is a tester fluent in all four bracketing genres who bounced off none,
+so there is no audience-fit escape hatch and the verdict is craft.
 
-**Four findings, all from checks written the same day.** A single heat scalar per component
-breaks §111.2's exactness for a multi-cell component straddling a window, so `Placement.heat`
-is an array indexed by the shape's own offsets. §111.2's *Δ × shared ÷ 9* is the **uniform**
-case rather than the rule — proportional is the mechanism, because the clamp at zero forces
-it — and asserting the ninths would have failed §133.1's clipped corner in the same file
-that exists to protect it. §135.1D's *zero power is reachable by exactly one path* undercounts:
-**an unrouted island is the second**, it stays legal deliberately, and §85.2 makes it the
-loudest thing on the board because an island has no trace at all. And §101.6's registry
-modelled one of §101.3's three entry points, leaving `recovery` and `shareLanding` reachable
-from nowhere.
+**Five causes, and four of them are defects rather than omissions.** They are worth
+separating, because only the first was a missing feature.
 
-**One check the build itself made.** `grid/heat` declared step 16 before the board was in the
-world, and the generator wired it into a loop that imported a `step()` nobody had written. A
-`STEP` declaration is a **claim to be wired**, so `tools/emit.ts` now refuses one it cannot
-honour and `gen/loop`'s PENDING list is the honest record until the board joins the world.
+**1. The board said nothing because the verbs were not on it.** The controls existed in
+prose the tester never reached. They are now printed on the canvas, the HOLDING block names
+the part with its cells and its draw, the AFTER line states the exact projected power and
+the heat before and after, a KEY names five channels with the swatches drawn beside them,
+the engagement slider is labelled FIGHT / LULL / CRUSH, and **WORKBENCH opens by default** —
+§85.3 splits the board into a status light and an instrument, and the link was opening on
+the status light.
 
-**Two findings from the link itself, which is the only kind a checkpoint can produce**,
-and the second is the one that was actually killing it. **`navigator.getGamepads` exists on
-every browser, so §81.2's pad cursor guarded it with a `typeof` check — and inside a frame
-whose permissions policy withholds the gamepad feature, *calling* it throws.** The poll runs
-first in every frame, so the first frame threw, nothing was ever drawn, and an untouched
-canvas is **transparent**: the page's own dark ground showed through and read as a game that
-rendered nothing rather than as a game that crashed. **Presence is not permission** — A-052,
-and the host now asks once and stops asking, because a policy denial cannot be revoked within
-a document.
+**2. The core was never drawn — A-053.** Every one of §85.1's seven channels describes a
+*placement*, so `drawBoard` used the core's position as a trace ORIGIN and never rendered
+the origin. That is invisible for exactly as long as there is a trace to infer it from, and
+`createBoard` returns no placements: **run one, every share link and every WORKBENCH session
+opened on a grid of substrate dots with nothing in the middle of them**, in a game whose
+hook is *power flood-fills from the core*. It is one stroked path, at both levels of detail,
+because §39.1 budgets the bezel board at *25 cells + 24 traces + the core* and the core's
+share of that 50 is one draw. **§131.5's BLACKOUT is the one state that changes its shape**:
+the outer ring opens into four brackets, because an open outline is the corruption's half of
+§46.2's form channel and therefore survives total colour loss.
 
-**The first finding was a real hazard on the same path and is fixed as well.** The
-first playable link came back as *"the board is blank"*, and it reproduced nowhere: the
-published JavaScript is byte-identical to the local build, the DOM survives publication
-intact, and the page renders correctly from a file, over HTTP, and inside a sandboxed frame.
-Reproduced at last by instrumenting the page rather than watching it — **a
-`<link rel="stylesheet">` blocks execution of every script after it until it resolves**, so a
-font host that is slow, blocked by an extension, or refused by a network policy does not
-degrade the type: it stops the game from ever starting. The HTML chrome renders, the canvas
-is never touched, and **an untouched canvas is transparent** — the page's own dark ground
-shows through and reads as a board that drew nothing. Nothing throws and nothing logs.
+**3. Every word in the game carried a stray mark, and `/` printed as `\` — A-054.** A stroke
+is centred on its path, so a glyph inked at column 0 painted half a line width OUTSIDE its
+packed cell and into whatever the shelf packer had put beside it — and because the packer
+sorts by height, which sliver a glyph picked up was arbitrary. An `I` acquired a stem and
+read as an `E`; an `O` acquired one and read as a `D`; every whole-word label ended in a tick
+nobody wrote. **The face had three checks and all three passed**: where it comes from, how
+many bytes it costs, whether every coordinate is on the 7×9 grid. None of them looks at what
+a *blit contains* — which is §85.4's shape exactly, auditing that a channel survives colour
+loss and never that it carries the right number. The fix costs **no atlas pixels**: §140.2's
+grid is seven columns and the ink occupies 0–4, so the slack was already paid for and
+§147.1's 0.8 MB does not move. Separately, both slashes were authored as the same stroke, so
+every ratio printed as `6\2` — guarded now by an **asymmetry** (§133.6) rather than a value,
+because each glyph was individually on the grid and individually legible.
 
-Fixed on both sides, because either alone leaves the failure reachable. The page loads its
-fonts **non-blocking**, so nothing external sits in front of the board. And the host **draws
-frame zero synchronously** and keeps a timer *behind* `requestAnimationFrame` — starting only
-if rAF has not fired within a second, standing down the tick it does — because an embedded
-frame the browser is not rendering never animates, and a first paint that waits on a
-scheduler is the same black rectangle by a second route. §14 is untouched: this is the host
-choosing when to call, and `dt` is still an input the host writes rather than a clock the
-simulation reads. The page also carries **§67.3's fault trace pointed at itself** — three
-seconds after load it asks the canvas whether anything ever reached it, and says nothing at
-all unless the answer is no.
+**4. The cursor and the core were the same object.** Both cyan, both a square, both at
+`max(2, cell × 0.08)`, and the cursor started **on** the core's own cell. The cursor is now
+white — §104.5's eighth core hue, so §46.2's cool side is untouched and what changed is
+*which* cool — thin, at the cell's boundary rather than inside it, and it opens on the cell
+**above** the core, which is where the first placement wants to go anyway.
 
-**Next: §9's gate**, at session 3 rather than session 5–7 (§81.3) — four qualitative criteria
-(§82.1), twenty minutes with the board and four questions rather than eight runs (§82.3), and
-§73.2's calibration set asked *before* it so the result can be read correctly. Then commit 11
-and phase 2: the free tray, auto-placement's `AUTO` tag and its ten-second undo, §103.2's
-offer cards, and the board wired into the world at steps 4, 5 and 16.
+**5. The substrate dot was two pixels at every cell size.** That is §83.2's finding one level
+down: §76.4 asserted a 120×120 board against a bezel band nobody had measured, and a fixed
+dot is the same mistake at the smaller scale. At the bezel's 14.4 px cell two pixels is a
+seventh of the cell and reads; at the workbench's 52 px it is a twenty-sixth, so **the board's
+shape** — §108.3's explicit per-core geometry, the thing that says where a player may place at
+all — stopped being visible. It scales, with a floor that leaves §86.2's measured bezel
+exactly where it was.
+
+**Next: re-gate.** §82.1's four criteria, asked again, on this build: *tool or chore?* ≥ 3/5 ·
+every cell and rotation reachable on a gamepad · **the tester can predict a placement's
+consequence before making it** · and **they move something without being asked to**. §70.3's
+second rung — reduce the board's interaction cost, never its existence — is what happens if
+it fails again, and the third is a §68.5 stop-condition event rather than a redesign. Then
+commit 11 and phase 2: the free tray, auto-placement's `AUTO` tag and its ten-second undo,
+§103.2's offer cards, and the board wired into the world at steps 4, 5 and 16.
 
 *A session that must stop mid-slice replaces this block with the files it touched and the
 invariant currently broken. A session that ends silently mid-change leaves the next one
@@ -130,13 +135,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 23/24 implemented · 24 planned (seeded)
-phase 2: 17/28 implemented · 41 planned (28 seeded)
+phase 1: 24/25 implemented · 25 planned (seeded)
+phase 2: 18/29 implemented · 42 planned (29 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   40/52 implemented · 269 planned
+total:   42/54 implemented · 271 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -305,6 +310,25 @@ bounces. Approval is real and is not evidence of fit. §98.6 already draws that 
 is now load-bearing rather than decorative: **a population says *minute seven loses
 people*, and only a person says *because the board felt like a chore*.** The population
 half arrives at phase 3b and nothing before it substitutes.
+
+**Checkpoint 1, answered — and §9's gate failed on it.** *"To be honest I have no idea what
+I am doing or what is happening in the game."* Against §82.1's diagnostic the tester marked
+all three: **I could not read the picture · I could read it but had no move · I could act but
+saw no consequence.** Only *the point* of the thing landed.
+
+**What changed because of it**, marker by marker, per §82.4:
+
+| The marker | What changed |
+|---|---|
+| *could not read the picture* | The core is drawn at last (A-053) · every word stopped carrying a stray mark and `/` stopped printing as `\` (A-054) · the substrate dot scales with the cell, so the board has a visible shape |
+| *could read it but had no move* | The verbs are printed on the canvas · the cursor is white and no longer sits inside the core · it opens adjacent to the core, where the first placement wants to go |
+| *could act but saw no consequence* | The AFTER line states the exact projected power and the heat before and after, for the cell under the cursor, before the commit |
+
+**The link did not fail before this and it did not "work" either**, which is the distinction
+worth keeping: three fault reports earlier in the same checkpoint found a render-blocking
+font link and §3's *presence is not permission* (A-052), and fixing both produced a board
+that drew. **A board that draws and says nothing is a different failure from a board that
+does not draw**, and only a person could have told the two apart.
 
 ---
 

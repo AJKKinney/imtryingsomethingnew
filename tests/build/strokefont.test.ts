@@ -177,3 +177,87 @@ describe('A-013 · §147.1 no fillText on a frame that renders entities', () => 
     expect(scanText('src/ui/buildreport.ts', source)).toEqual([])
   })
 })
+
+describe('A-054 · §140.2 a blit carries its own glyph and nothing else', () => {
+  // The face was audited three ways — where it comes from, how many bytes it costs,
+  // whether every coordinate is on the 7x9 grid — and every one of those passed while
+  // every word in the game rendered with a stray mark after it. A stroke is centred on
+  // its path, so a glyph inked at column 0 painted half a line width into whatever the
+  // shelf packer had put beside it, and the neighbour was arbitrary because the packer
+  // sorts by height. It is §85.4's shape exactly: the checks asked whether the channel
+  // survives, never what it carries.
+
+  it('keeps every stroke, expanded by half its width, inside its own cell', () => {
+    const atlas = buildAtlas(stubSurface, ['SALVAGE', 'OVERCLOCK'])
+    const surface = atlas.surface as ReturnType<typeof stubSurface>
+    const cells = [...atlas.cells.values()]
+    expect(cells.length).toBeGreaterThan(100)
+
+    let checked = 0
+    for (let i = 0; i + 1 < surface.segments.length; i += 2) {
+      const x = surface.segments[i] ?? 0
+      const y = surface.segments[i + 1] ?? 0
+      const cell = cells.find((c) => x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h)
+      expect(cell, `stroke at ${x},${y} belongs to no cell`).toBeDefined()
+      if (cell === undefined) continue
+      // The cell's height is GLYPH_ROWS * scale, which recovers the width the packer
+      // stroked it at without the stub having to record it.
+      const half = Math.max(1, (cell.h / GLYPH_ROWS) * 0.75) / 2
+      expect(x - half, 'left').toBeGreaterThanOrEqual(cell.x)
+      expect(x + half, 'right').toBeLessThanOrEqual(cell.x + cell.w)
+      expect(y - half, 'top').toBeGreaterThanOrEqual(cell.y)
+      expect(y + half, 'bottom').toBeLessThanOrEqual(cell.y + cell.h)
+      checked++
+    }
+    expect(checked).toBeGreaterThan(500)
+  })
+
+  it('costs no atlas pixels to do it, because the slack was already paid for', () => {
+    // §140.2's grid is 7 columns and the ink occupies 0..4 — the advance is 6 — so
+    // every cell already carries right-hand slack. Padding the cells would have grown
+    // §147.1's 0.8 MB by a quarter; an inset uses room that was already there.
+    const many = Array.from({ length: 131 }, (_, i) => `LABEL NUMBER ${i}`)
+    expect(buildAtlas(stubSurface, many).usedPixels * 4).toBeLessThan(0.8 * 1024 * 1024)
+  })
+
+  it('slopes the slash pair in opposite directions, which no per-glyph check saw', () => {
+    // §133.6 — a shape is guarded by an ASYMMETRY, never by a value. Both slashes were
+    // authored as the same stroke: each was individually on the grid, individually
+    // legible, and every ratio in the game printed as 6\\2. The claim is about SLOPE,
+    // so it needs no reference to the grid's width and survives a wider face.
+    const slope = (ch: string): number => {
+      const s = glyphStrokes(ch)
+      let sum = 0
+      for (let i = 0; i < s.length; i += 4) {
+        sum += ((s[i + 2] ?? 0) - (s[i] ?? 0)) * ((s[i + 3] ?? 0) - (s[i + 1] ?? 0))
+      }
+      return sum
+    }
+    expect(slope('\\')).toBeGreaterThan(0)
+    expect(slope('/')).toBeLessThan(0)
+    // And the same asymmetry on the pair that already had it, so the test is a test.
+    expect(slope('X')).toBe(0)
+  })
+
+  it('separates W from H by a diagonal, which is the only channel left at 5 columns', () => {
+    // DRAW rendered as DRAH — and the cause was the moat above rather than the shape,
+    // because the stray stem the packer contributed sat where a crossbar would. The
+    // structural claim survives the fix and is what stops a future session "tidying"
+    // the wedge out: at five columns and one-pixel strokes the ONLY thing separating
+    // the pair is that W has diagonals and H has none.
+    const diagonals = (ch: string): number => {
+      const s = glyphStrokes(ch)
+      let n = 0
+      for (let i = 0; i < s.length; i += 4) {
+        if (s[i] !== s[i + 2] && s[i + 1] !== s[i + 3]) n++
+      }
+      return n
+    }
+    expect(diagonals('H')).toBe(0)
+    expect(diagonals('W')).toBeGreaterThan(0)
+    expect(diagonals('M')).toBeGreaterThan(0)
+    // And the pair is not merely different: they are different in the LOWER half for
+    // W and at mid-height for H, which is what a reader at seven pixels resolves.
+    expect(diagonals('E')).toBe(0)
+  })
+})

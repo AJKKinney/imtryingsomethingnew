@@ -26,12 +26,15 @@
  * §68.5's stop condition becomes a decision rather than a bereavement.
  */
 import { drawText, type Atlas, type Scale } from '../render/atlas.ts'
-import { BACKGROUND, PLAYER, SUBSTRATE } from '../gen/palette.ts'
+import { BACKGROUND, CORE_HUES, PLAYER, SUBSTRATE } from '../gen/palette.ts'
 import type { Surface } from '../render/surface.ts'
-import { drawBoard, frameOf, heatTint, type BoardFrame, type BoardView } from '../render/boardview.ts'
 import {
-  cellsOf, createBoard, drawOf, key, mask, move, place, scrap, thresholds,
-  type Board, type Cell, type ComponentId, type Rotation,
+  deliveredFor, drawBoard, frameOf, heatTint, traceWidth,
+  type BoardFrame, type BoardView,
+} from '../render/boardview.ts'
+import {
+  cellsOf, createBoard, drawOf, key, mask, move, place, scrap, shapeOf, rotate, thresholds,
+  type Board, type Cell, type ComponentId, type Placement, type Rotation,
 } from './prototype-imports.ts'
 import { equilibrium, isOverclocked, regionHeat, stateOf, tickHeat } from '../grid/heat.ts'
 import { reaches, runRate } from '../grid/power.ts'
@@ -67,7 +70,10 @@ export interface Prototype {
 
 export const createPrototype = (): Prototype => ({
   board: createBoard('lattice'),
-  cursor: { x: 2, y: 2 },
+  // NOT the core's own cell: a cursor that opens on top of the core is invisible, and
+  // the cell above it is where the opening placement wants to go anyway — adjacent to
+  // the core is where §15's decay of 1 per step makes power free.
+  cursor: { x: 2, y: 1 },
   rotation: 0,
   holding: 0,
   carrying: -1,
@@ -229,38 +235,169 @@ export interface PrototypeLayout {
  * and damage numbers — the language of polish — and under §76's lens it is **the
  * toy**, which is a different requirement with a different test.
  */
+/**
+ * What a confirm would do, computed on a COPY of the real board with the real
+ * functions rather than estimated. §30's Board is four fields and an array, so the
+ * projection is a shallow copy and a `place()` — which means the number the ghost
+ * shows and the number the player gets are the same number by construction, and
+ * cannot drift the way a second implementation drifts (§134.2's exact failure).
+ */
+const project = (p: Prototype): { board: Board; placed: Placement } | undefined => {
+  const id = TRAY[p.holding]
+  if (id === undefined) return undefined
+  const copy: Board = { ...p.board, placements: [...p.board.placements] }
+  if (!place(copy, id, p.cursor, p.rotation)) return undefined
+  const placed = copy.placements[copy.placements.length - 1]
+  return placed === undefined ? undefined : { board: copy, placed }
+}
+
+/** §104.5's eighth core hue — the brightest cool, reserved here for the cursor. */
+const CURSOR = CORE_HUES[7] ?? '#eaf6ff'
+
+const box = (surface: Surface, x: number, y: number, w: number, h: number): number => {
+  surface.beginPath()
+  surface.moveTo(x, y)
+  surface.lineTo(x + w, y)
+  surface.lineTo(x + w, y + h)
+  surface.lineTo(x, y + h)
+  surface.lineTo(x, y)
+  surface.stroke()
+  return 1
+}
+
+/**
+ * §85's grammar, drawn as itself. The board carries seven channels and until the
+ * first gate not one of them was ever NAMED — §85.4 audited that every channel
+ * survives total colour loss and nobody audited whether a first-time viewer can
+ * decode any of them. A key is not a tutorial: it is the legend a diagram needs,
+ * and it is drawn from the same primitives as the board so it cannot describe a
+ * board the board does not draw.
+ */
+const drawKey = (
+  surface: Surface, atlas: Atlas, p: Prototype, layout: PrototypeLayout,
+  x: number, y: number,
+): number => {
+  const s = layout.scale
+  const t = thresholds(p.board)
+  let draws = drawText(surface, atlas, text('key'), s, x, y)
+  const rowH = 15
+  const swatch = 26
+  const rows: readonly string[] = [
+    `${text('power')} ${text('full')}`,
+    `${text('power')} ${text('starved')}`,
+    `${text('heat')} ${text('cool')}`,
+    `${text('heat')} ${text('hot')}`,
+    text('empty'),
+  ]
+  rows.forEach((row, i) => {
+    const ry = y + 14 + i * rowH
+    const mid = ry + 4
+    if (i === 0 || i === 1) {
+      surface.setStroke(PLAYER, traceWidth(layout.view, i === 0 ? 1 : 0.33))
+      surface.beginPath()
+      surface.moveTo(x, mid)
+      surface.lineTo(x + swatch, mid)
+      surface.stroke()
+      draws++
+    } else if (i === 2 || i === 3) {
+      surface.setFill(heatTint(p.board, i === 2 ? 0 : t.overclock))
+      surface.fillRect(x, ry, swatch, 9)
+      draws++
+    } else {
+      surface.setStroke(SUBSTRATE, 1)
+      draws += box(surface, x, ry, swatch, 9)
+    }
+    draws += drawText(surface, atlas, row, s, x + swatch + 8, ry)
+  })
+  return draws
+}
+
 export const drawPrototype = (
   surface: Surface, atlas: Atlas, p: Prototype, layout: PrototypeLayout,
 ): number => {
   surface.clear()
   const frame = frameOf(p.board)
-  let draws = drawBoard(surface, p.board, layout.view, frame)
-
-  // The cursor: a bright box on the cell, and the ghost of what a confirm would do.
   const v = layout.view
+  const s = layout.scale
+  let draws = drawBoard(surface, p.board, v, frame)
+
+  // ── the verbs, on screen rather than in a table below the page (§112.1) ──────
+  // The first gate found a player who could read the board and had NO MOVE. A cursor
+  // with no stated verb is a cursor that means nothing, and the controls were four
+  // hundred pixels below the canvas in prose nobody had reached yet.
+  draws += drawText(surface, atlas, 'ARROWS MOVE   ENTER PLACE   R ROTATE   BACKSPACE SCRAP',
+    s, v.x, 14)
+  draws += drawText(surface, atlas, `Q E ${text('holding')}   [ ] ${text('fight')}   TAB RUN`,
+    s, v.x, 28)
+
+  // ── the cursor, and the ghost of what a confirm would do ────────────────────
+  // WHITE and thin, at the cell's own boundary, because the core is CYAN and heavy
+  // inside it — and until this pass they were the same colour at the same weight, so
+  // on the board every run opens on the cursor and the core were one indistinguishable
+  // stack of squares. It stays on §46.2's cool side (the eighth core hue), so the
+  // friend/foe read is untouched: what changes is which cool, which is exactly the
+  // channel §104.5 already spends on identity.
   const cx = v.x + p.cursor.x * v.cell
   const cy = v.y + p.cursor.y * v.cell
-  surface.setStroke(PLAYER, Math.max(2, v.cell * 0.08))
-  surface.beginPath()
-  surface.moveTo(cx, cy)
-  surface.lineTo(cx + v.cell, cy)
-  surface.lineTo(cx + v.cell, cy + v.cell)
-  surface.lineTo(cx, cy + v.cell)
-  surface.lineTo(cx, cy)
-  surface.stroke()
-  draws++
+  surface.setStroke(CURSOR, 2)
+  draws += box(surface, cx, cy, v.cell, v.cell)
 
-  // §115.5's slider, drawn as what it is: the run's thermal range, by hand.
-  const barW = v.cell * 5
-  surface.setFill(SUBSTRATE)
-  surface.fillRect(v.x, layout.panelY - 18, barW, 8)
-  surface.setFill(heatTint(p.board, thresholds(p.board).meltdown * p.engagement))
-  surface.fillRect(v.x, layout.panelY - 18, barW * p.engagement, 8)
-  draws += 2
-
-  for (const [i, line] of inspect(p, frame).entries()) {
-    draws += drawText(surface, atlas, line, layout.scale, layout.panelX, layout.panelY + i * 12)
+  const ghost = project(p)
+  if (ghost !== undefined) {
+    // The FOOTPRINT is the half the cursor could never show: a three-cell part under
+    // a one-cell box is a placement the player cannot see the shape of.
+    surface.setStroke(PLAYER, 1)
+    for (const c of cellsOf(ghost.placed)) {
+      draws += box(surface, v.x + c.x * v.cell + 4, v.y + c.y * v.cell + 4,
+        v.cell - 8, v.cell - 8)
+    }
   }
+
+  // ── what is held, and what it would cost ────────────────────────────────────
+  const px = layout.panelX
+  const held = TRAY[p.holding]
+  draws += drawText(surface, atlas, text('holding'), s, px, v.y)
+  if (held !== undefined) {
+    const shape = rotate(shapeOf(held), p.rotation)
+    draws += drawText(surface, atlas,
+      `${text(held)}  ${shape.length} ${text('cells')}  ${text('draw')} ${drawOf(held)}`,
+      s, px, v.y + 14)
+  }
+
+  // The consequence, which the first gate found missing entirely: the player could
+  // act and could not tell what changed. Both numbers come from the projection, so
+  // they are what WILL happen rather than what probably will.
+  const before = regionHeat(p.board, p.cursor)
+  if (ghost === undefined) {
+    draws += drawText(surface, atlas, `${text('after')} ${text('blocked')}`, s, px, v.y + 28)
+  } else {
+    const after = regionHeat(ghost.board, p.cursor)
+    const power = deliveredFor(frameOf(ghost.board), ghost.placed)
+    draws += drawText(surface, atlas,
+      `${text('after')} ${text('power')} ${power}/${drawOf(ghost.placed.id)}` +
+      `  ${text('heat')} ${before.toFixed(1)}>${after.toFixed(1)}`,
+      s, px, v.y + 28)
+  }
+
+  // ── §69.3's six lines, unchanged: the state as it IS ────────────────────────
+  for (const [i, line] of inspect(p, frame).entries()) {
+    draws += drawText(surface, atlas, line, s, px, layout.panelY + i * 12)
+  }
+
+  draws += drawKey(surface, atlas, p, layout, px, layout.panelY + 88)
+
+  // ── §115.5's slider, drawn as what it is: the run's thermal range, by hand ───
+  const barW = v.cell * 5
+  const barY = v.y + v.cell * 5 + 24
+  draws += drawText(surface, atlas,
+    `${text('fight')} ${Math.round(p.engagement * 100)}`, s, v.x, barY - 16)
+  surface.setFill(SUBSTRATE)
+  surface.fillRect(v.x, barY, barW, 10)
+  surface.setFill(heatTint(p.board, thresholds(p.board).meltdown * p.engagement))
+  surface.fillRect(v.x, barY, barW * p.engagement, 10)
+  draws += 2
+  draws += drawText(surface, atlas, text('lull'), s, v.x, barY + 16)
+  draws += drawText(surface, atlas, text('crush'), s, v.x + barW - 34, barY + 16)
   return draws
 }
 

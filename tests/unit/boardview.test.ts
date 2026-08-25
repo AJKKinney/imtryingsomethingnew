@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest'
 import { stubSurface } from '../surface.ts'
 import {
   BEZEL_BOARD_DRAWS, boosted, dashesFor, drawBoard, frameOf, heatAlpha, heatFill,
-  heatTint, traceWidth, type BoardView,
+  drawCore, heatTint, traceWidth, type BoardView,
 } from '../../src/render/boardview.ts'
 import { addHeat, cellsOf, createBoard, key, place, thresholds } from '../../src/grid/board.ts'
 import { cellHeat, regionHeat } from '../../src/grid/heat.ts'
@@ -34,8 +34,8 @@ const fillsByCell = (
     const y = Number(fills[i + 1])
     const w = Number(fills[i + 2])
     const colour = String(fills[i + 4])
-    // The substrate dot is 2 px square whatever the cell is; a heat fill is inset.
-    if (w <= 4) continue
+    // A substrate dot scales with the cell and stays small; a heat fill nearly fills it.
+    if (w < view.cell * 0.5) continue
     const cell: Cell = {
       x: Math.round((x - view.x) / view.cell),
       y: Math.round((y - view.y) / view.cell),
@@ -196,5 +196,73 @@ describe('A-050 · §85.2 the seven channels, none of them hue', () => {
     const fullDraws = drawBoard(full, board, VIEW, frameOf(board))
     expect(bezelDraws).toBeLessThanOrEqual(BEZEL_BOARD_DRAWS)
     expect(fullDraws).toBeGreaterThan(bezelDraws)
+  })
+})
+
+describe('A-053 · §85.2 the core, which is the only thing on an empty board', () => {
+  // Every one of §85.1's seven channels describes a PLACEMENT, so `drawBoard` took the
+  // core's position as a trace origin and never rendered the origin. That is invisible
+  // for exactly as long as there is a trace to infer it from — and `createBoard`
+  // returns no placements, so run one, every share link and every WORKSHOP session
+  // opened on a grid of substrate dots with nothing in the middle of it.
+  const CENTRE = { x: 100, y: 100 }  // at(VIEW, lattice's (2,2))
+
+  const outline = (segments: readonly number[], points: number): { x: number; y: number }[] =>
+    Array.from({ length: points }, (_, i) => ({
+      x: segments[i * 2] ?? Number.NaN, y: segments[i * 2 + 1] ?? Number.NaN,
+    }))
+
+  it('draws something at the core on a board with no placements at all', () => {
+    const board = createBoard('lattice')
+    expect(board.placements).toHaveLength(0)
+
+    const surface = stubSurface(400, 400)
+    const draws = drawBoard(surface, board, VIEW, frameOf(board))
+
+    // 25 substrate dots and one stroked path, and the path is the core.
+    expect(surface.paths).toBe(1)
+    expect(draws).toBe(surface.fills.length / 5 + 1)
+    const xs = surface.segments.filter((_, i) => i % 2 === 0)
+    const ys = surface.segments.filter((_, i) => i % 2 === 1)
+    expect(Math.min(...xs)).toBeLessThan(CENTRE.x)
+    expect(Math.max(...xs)).toBeGreaterThan(CENTRE.x)
+    // Symmetric about the core, which is §85.2's constraint on everything the machine
+    // draws and §46.2's friend/foe language rather than a decoration on it.
+    expect(Math.min(...xs) + Math.max(...xs)).toBeCloseTo(CENTRE.x * 2, 6)
+    expect(Math.min(...ys) + Math.max(...ys)).toBeCloseTo(CENTRE.y * 2, 6)
+  })
+
+  it('costs one draw at both levels of detail, which is its share of §39.1’s 50', () => {
+    const board = createBoard('lattice')
+    expect(drawCore(stubSurface(400, 400), board, VIEW)).toBe(1)
+    expect(drawCore(stubSurface(120, 120), board, BEZEL)).toBe(1)
+  })
+
+  it('draws a closed outline while powered and an open one during a BLACKOUT', () => {
+    // §131.5 — zero core output is reachable by exactly one path and takes the whole
+    // board dark, which is the moment the player most needs to know where to send
+    // §2.2A's reboot order. The channel is FORM, not brightness: an open outline is
+    // the corruption's half of §46.2's axis, so it survives total colour loss.
+    const lit = createBoard('lattice')
+    const litSurface = stubSurface(400, 400)
+    drawCore(litSurface, lit, VIEW)
+    const closed = outline(litSurface.segments, 5)
+    expect(closed[0]).toEqual(closed[4])
+
+    const dark = createBoard('lattice')
+    dark.coreOutput = 0
+    const darkSurface = stubSurface(400, 400)
+    drawCore(darkSurface, dark, VIEW)
+
+    // Four brackets rather than one perimeter: more points, and the outer run never
+    // closes back on where it started.
+    expect(darkSurface.paths).toBe(1)
+    expect(darkSurface.segments.length).toBeGreaterThan(litSurface.segments.length)
+    const broken = outline(darkSurface.segments, 12)
+    expect(broken[0]).not.toEqual(broken[11])
+    // Still symmetric, and still reaching the same four corners.
+    const corners = broken.filter((p) =>
+      Math.abs(Math.abs(p.x - CENTRE.x) - Math.abs(p.y - CENTRE.y)) < 1e-9)
+    expect(corners).toHaveLength(4)
   })
 })

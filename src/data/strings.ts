@@ -156,6 +156,23 @@ export const LABELS: readonly Label[] = Object.freeze([
   // the whole run's thermal range in ten seconds, which no live run can do.
   label('hud', 'engagement', 'ENGAGEMENT'),
   label('hud', 'unrouted', 'UNROUTED'),
+  // §81.3's board prototype, after the first gate: a player fluent in all four of
+  // §73.2's bracketing genres could not read the picture, had no move, and saw no
+  // consequence. Seven channels were drawn and none was ever NAMED, so these are the
+  // key — the board says what its own grammar means instead of assuming it is read.
+  label('hud', 'key', 'KEY'),
+  label('hud', 'empty', 'EMPTY'),
+  label('hud', 'full', 'FULL'),
+  label('hud', 'starved', 'STARVED'),
+  label('hud', 'cool', 'COOL'),
+  label('hud', 'hot', 'HOT'),
+  label('hud', 'holding', 'HOLDING'),
+  label('hud', 'lull', 'LULL'),
+  label('hud', 'crush', 'CRUSH'),
+  label('hud', 'fight', 'FIGHT'),
+  label('hud', 'here', 'HERE'),
+  label('hud', 'after', 'AFTER'),
+  label('hud', 'blocked', 'BLOCKED'),
   // ── the verbs (§112.1 — the board's operational set, one label each)
   label('action', 'place', 'PLACE'),
   label('action', 'move', 'MOVE'),
@@ -271,7 +288,17 @@ export const PROSE: readonly ProseSurface[] = Object.freeze([
 
 /** What is actually here, against §102.2's 131. The gap is the point (§145.6). */
 export const LABEL_COUNT: number = LABELS.length
-export const LABEL_BUDGET = 131
+/**
+ * 131 -> 144 after the first gate. §102.2 counted the labels a finished game shows and
+ * had no row for a label that says what a CHANNEL means, because §85.4 audited that
+ * every channel survives colour loss and no pass ever audited whether a first-time
+ * viewer can decode one. Thirteen of these are the board's key.
+ *
+ * §145.6's law is why the number moved rather than the work being squeezed under it:
+ * an addition is costed against the increment and the total is recomputed. A budget
+ * that absorbs additions silently is a budget that stops meaning anything.
+ */
+export const LABEL_BUDGET = 144
 
 /** §102.2's ~640, after §134.3 cut the victory copy. */
 export const PROSE_WORDS: number = PROSE.reduce((n, p) => n + p.words, 0)
