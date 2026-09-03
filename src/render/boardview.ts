@@ -97,14 +97,38 @@ export const frameOf = (board: Board): BoardFrame => ({
  * Ring's meltdown as Lattice's mid-range and show the player a board that is not the
  * one they are playing.
  */
+/**
+ * How many of the ramp's colours read as SAFE. Everything from here up is the
+ * overclocked band, and the split is what anchors the picture to the predicate.
+ */
+export const SAFE_BANDS = 2
+
 export const heatTint = (board: Board, heat: number): string => {
   const t = thresholds(board)
-  const span = t.meltdown
-  const at = span <= 0 ? 0 : heat / span
   const last = HEAT_RAMP.length - 1
-  let index = Math.floor(at * last)
-  if (index < 0) index = 0
-  if (index > last) index = last
+  if (t.meltdown <= 0 || t.overclock <= 0) return HEAT_RAMP[0] ?? SUBSTRATE
+  if (heat >= t.meltdown) return HEAT_RAMP[last] ?? SUBSTRATE
+  // Anchored to the THRESHOLDS rather than interpolated across the whole span,
+  // because §134.2 requires the set drawn at or above the overclock tint to be
+  // exactly the set the simulation reports overclocked. Linear in `heat / meltdown`
+  // it was not: on Lattice the amber began at **8.81** against a line of 10, so every
+  // region between them was painted overclocked while the simulation called it safe —
+  // a false alarm on the quantity §116.5 calls the game's real minute-scale decision,
+  // and §2's *cheated* pointing the other way. The old form passed its own test
+  // because that test sampled one board rather than sweeping the band (§133.6: a
+  // property is guarded by an asymmetry, not by a value).
+  if (heat < t.overclock) {
+    const at = heat / t.overclock
+    let index = Math.floor(at * SAFE_BANDS)
+    if (index < 0) index = 0
+    if (index > SAFE_BANDS - 1) index = SAFE_BANDS - 1
+    return HEAT_RAMP[index] ?? SUBSTRATE
+  }
+  const hot = last - SAFE_BANDS
+  const at = (heat - t.overclock) / (t.meltdown - t.overclock)
+  let index = SAFE_BANDS + Math.floor(at * hot)
+  if (index < SAFE_BANDS) index = SAFE_BANDS
+  if (index > last - 1) index = last - 1
   return HEAT_RAMP[index] ?? SUBSTRATE
 }
 

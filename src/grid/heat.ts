@@ -142,6 +142,35 @@ export const regionFieldIncremental = (
   return out
 }
 
+/**
+ * A region's GENERATION at a given engagement — the input to §31.1's equilibrium,
+ * and the quantity §69.3's inspect line is about.
+ *
+ * A component's generation is spread evenly across the cells it occupies (§112.4's
+ * `addHeat`, and `tickHeat`'s `generation / cells`), so a component straddling the
+ * window's edge contributes the share of itself that is inside it. That is the same
+ * arithmetic the tick performs, which is what keeps the number the panel shows and
+ * the number the region reaches the same number rather than two implementations of
+ * one idea (§134.6).
+ */
+export const regionGeneration = (board: Board, centre: Cell, engagement: number): number => {
+  const eng = engagement < 0 ? 0 : engagement > 1 ? 1 : engagement
+  const inside = new Set(window(board, centre).map((c) => key(c)))
+  const store = cellHeat(board)
+  let sum = 0
+  for (const p of board.placements) {
+    const emitter = EMITTERS[p.id as keyof typeof EMITTERS] as Emitter | undefined
+    if (emitter === undefined) continue
+    const cells = cellsOf(p)
+    if (cells.length === 0) continue
+    const share = cells.filter((c) => inside.has(key(c))).length / cells.length
+    if (share === 0) continue
+    const targets = (LATE_TARGETS_HIT[p.id] ?? 0) * eng
+    sum += emitterGeneration(emitter.rate, targets, isOverclocked(board, p, store)) * share
+  }
+  return sum
+}
+
 export const stateOf = (board: Board, heat: number): RegionState => {
   const t = thresholds(board)
   if (heat >= t.meltdown) return 'meltdown'

@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**101 decisions · 56 supersede an earlier one · 55%.**
+**105 decisions · 56 supersede an earlier one · 53%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -127,6 +127,10 @@ resume budget honest as this file grows.
 | a spawned enemy is a new enemy | field | commit 10 | — |
 | scrapping never changes what the board is carrying | board | commit 10 | — |
 | a tick of heat resolves against the start-of-tick field | heat | commit 10 | — |
+| the dash covers the whole dash | field | commit 10 | — |
+| the settled figure is an equilibrium of generation | ui | commit 10 | — |
+| a preview is of the act a confirm performs | board | commit 10 | — |
+| the heat ramp is anchored to the thresholds | render | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -226,7 +230,7 @@ Lattice 6, Spindle 6, Ring 9 — roughly half the original, because at the old v
 §135.1D says zero delivered power is reachable by exactly one path, §131.5's blackout. There are two: a component with no chain of occupied cells back to the core receives nothing, and nothing in the legality rules forbids one. Islands stay legal — forbidding them would delete the harshest form of the power constraint and the clearest reason conduits exist — and §85.2 makes the mistake the loudest thing on the board, since power is drawn as the trace's width and an island has no trace at all. What it costs is precision in §8: "never switching off" governs components the core can actually reach.
 
 
-### board — 5
+### board — 6
 
 **board expansion geometry** — §108.3 *(supersedes §8, §35.2)*
 
@@ -248,8 +252,12 @@ A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags
 
 §112.2's move verb identifies the carried component by ARRAY INDEX and §112.2's scrap SPLICES, so every index above the hole shifted under it. Measured: pick up the Orbiter, scrap the Arc, confirm — and the Mine moves while the Orbiter stays put, the board doing something the player did not ask for, silently, on the surface §68 calls the product. Scrapping a LATER component instead left the index past the end, where `move` fails and never clears, so the board stopped accepting input at all. The carry is released when it is the component scrapped and decremented when the hole is below it, which is the only reading under which a carry is a component rather than a position.
 
+**a preview is of the act a confirm performs** — commit 10
 
-### render — 16
+The projection ran a PLACE of the tray part unconditionally while `apply` resolves a MOVE first, so a carried component meant the ghost outlined the wrong footprint, the HOLDING panel named the wrong part and the AFTER line priced the wrong part's power and heat. Quietest where it was worst: a carried component still occupies its old cells until the move resolves, so a legal move onto a neighbouring cell projected as AFTER BLOCKED and then succeeded. §9's first gate reported "I could act but saw no consequence"; a consequence shown for a different act is that one turn worse, and §76.2 is explicit that placement juice is CAUSALITY rather than feel.
+
+
+### render — 17
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -315,8 +323,12 @@ A dot fixed at two pixels is §83.2's finding one level down — that pass caugh
 
 The wedge is FILLED as well as stroked and held for ten ticks rather than six. Found by shipping the cone and being told, again, that no weapons were firing: at 3 shots a second a six-tick flash leaves the weapon dark in 77% of frames, and a 2 px outline in a frame already holding hundreds of stroked silhouettes is a shape to interpret rather than a discharge. Ten ticks covers half of Arc's own cadence, which is the band the assertion now states — long enough to read as fire, short enough that two shots never overlap, so it stays a FADE rather than a constant glow (§12's reduce-flashing rule). Both are RENDER constants: the simulation stamps `firedAt` and never reads either, so §14's golden hash does not move. §39.3's ceiling gains one draw, against a margin of a hundred.
 
+**the heat ramp is anchored to the thresholds** — commit 10
 
-### field — 13
+A ramp linear in `heat / meltdown` puts a fixed fraction of the span at each band, and §58.5 made every threshold pair geometry-relative — 10/22, 7/19, 7/17, and 7/19 once Ring expands — precisely so a rung means the same thing on cores whose regions differ in size. Measured on Lattice: the amber began at 8.81 against a line of 10, so the whole band between them drew overclocked and simulated safe, all run, on the surface §68 calls the product. The bands now sit either side of the overclock line by construction, so §134.2's exact-set claim holds on all six board states rather than on the one a test happened to sample.
+
+
+### field — 14
 
 **enemy speeds** — §37.1 *(supersedes the original table)*
 
@@ -369,6 +381,10 @@ The substrate ending — traces stop, the ground goes dark — and a hard wall t
 **a spawned enemy is a new enemy** — commit 10
 
 §17 pre-allocates and never grows, so `spawn` hands back a slot a dead enemy was using and sets only the id — everything that makes it a NEW enemy is the spawner's job. It set every field except the one added last, and §46.2's hit flash is a STAMP compared against `world.tick`, so a recycled slot arrived still holding its predecessor's: measured at 45 of 185 spawns born inside the flash window, wearing the player's white in the pass that exists to separate warm from cool. The assertion checks every mutable field rather than the one that bit, because the next field added is forgotten the same way.
+
+**the dash covers the whole dash** — commit 10
+
+§9 states the verb in six words — "i-frames throughout" — and the difficulty is §142.5's ordering rather than the rule. The player step is 6 and collision is 14, so collision reads what the player step LEFT, after its own end-of-tick decrement; a cover taken from the already-decremented `dashTicks` is spent one tick early and then spent again by the shared decrement. Measured on a 12-tick dash: i-frames reached zero while `dashTicks` still stood, so the closing ticks of every dash were unprotected while the player was still travelling at 700 u/s and could not take the direction back. §95.2 repriced the dash to 5 s so that spending it is a decision; handing damage back inside the window is §2's cheated, on the axis §88.2 makes multiplicative with the board.
 
 
 ### draft — 11
@@ -489,7 +505,7 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
 
-### ui — 10
+### ui — 11
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -526,6 +542,10 @@ A host device API is asked ONCE and, if the call is refused, never again. `navig
 **the cursor is white and the core is cyan** — commit 10
 
 They were the same colour at the same weight, and the cursor opened ON the core's own cell — so the board every run opens on rendered as one indistinguishable stack of squares. The cursor takes §104.5's eighth core hue, which keeps §46.2's cool side untouched and spends the channel §104.5 already spends on identity; it is thin and sits at the cell boundary where the core is heavy and inset; and it opens on the cell ABOVE the core, where §15's decay of 1 per step makes the first placement want to go.
+
+**the settled figure is an equilibrium of generation** — commit 10
+
+`equilibrium` takes a GENERATION and returns `generation x 1.5`; the inspect panel handed it a HEAT, so the one number a placement decision turns on printed as `heat x 1.5` — a quantity that is neither. It type-checked because both are numbers and it read plausibly because it moved when heat moved, which is why watching the panel could not catch it. Measured: a four-Arc region settling at 23.78 announced 35.67, and two Arcs settled at 8.9 against an overclock line of 10 read 13.4 — a stably safe region announced as past the threshold, in the panel §69.3 exists to make that legible with. §134.6's rule generalised: a surface declares the quantity it renders, and a unit is part of the quantity.
 
 **a screen title is a label, its contents are prose** — commit 9
 

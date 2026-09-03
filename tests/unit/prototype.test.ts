@@ -12,11 +12,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   ENGAGEMENT_FULL, ENGAGEMENT_RADIUS, TRAY, apply, createPrototype, drawPrototype,
-  engagementOf, inspect, tick, under, type Prototype,
+  engagementOf, inspect, preview, tick, under, type Prototype,
 } from '../../src/ui/prototype.ts'
 import { frameOf } from '../../src/render/boardview.ts'
 import { cellsOf, drawOf, key, place, thresholds } from '../../src/grid/board.ts'
-import { equilibrium, regionHeat } from '../../src/grid/heat.ts'
+import { equilibrium, regionGeneration, regionHeat, tickHeat } from '../../src/grid/heat.ts'
 import { computePower, reaches, runRate } from '../../src/grid/power.ts'
 import { LABELS } from '../../src/data/strings.ts'
 import { addHeat } from '../../src/grid/board.ts'
@@ -55,7 +55,11 @@ describe('A-051 · §69.3 inspect mode carries the six quantities, from state th
     expect(lines[1]).toBe(`${label('overclock')} ${t.overclock} ${label('meltdown')} ${t.meltdown}`)
     expect(lines[2]).toBe(`${label('power')} ${delivered} / ${drawOf('arc')}`)
     expect(lines[3]).toContain(label('arc'))
-    expect(lines[5]).toContain(equilibrium(region).toFixed(1))
+    // The equilibrium of the region's GENERATION, not of its heat. This line read
+    // `equilibrium(region)` and passed for eleven passes, because `equilibrium` takes
+    // a generation and a heat is the same shape — a number (A-061).
+    expect(lines[5]).toContain(
+      equilibrium(regionGeneration(p.board, p.cursor, p.engagement)).toFixed(1))
   })
 
   it('never recomputes a quantity the simulation owns', () => {
@@ -75,7 +79,8 @@ describe('A-051 · §69.3 inspect mode carries the six quantities, from state th
       const lines = inspect(p, frame)
       const region = regionHeat(p.board, p.cursor)
       expect(lines[0]).toBe(`${label('region')} ${label('heat')} ${region.toFixed(1)}`)
-      expect(lines[5]).toBe(`${label('heat')} ${equilibrium(region).toFixed(1)}`)
+      expect(lines[5]).toBe(`${label('heat')} ${equilibrium(
+        regionGeneration(p.board, p.cursor, p.engagement)).toFixed(1)}`)
       expect(runRate(frame.power, placed)).toBe(runRate(computePower(p.board), placed))
     }
   })
@@ -295,5 +300,136 @@ describe('A-058 · §112.2 a carry survives a scrap, or ends', () => {
     apply(p, 'confirm')
     expect(at(p, 'arc')).toBe('3,3')
     expect(at(p, 'orbiter')).toBe('3,1')
+  })
+})
+
+describe('A-061 · §69.3 the settled figure is the equilibrium of a GENERATION', () => {
+  /** Four Arcs sharing one region, so the region is doing real work. */
+  const cluster = (): Prototype => {
+    const p = createPrototype()
+    for (const c of [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }]) {
+      place(p.board, 'arc', c, 0)
+    }
+    p.cursor = { x: 1, y: 1 }
+    p.engagement = 1
+    return p
+  }
+  /** Where the region ACTUALLY settles, by running §31.1's integrator to rest. */
+  const settled = (p: Prototype): number => {
+    for (let i = 0; i < 3_000; i++) tickHeat(p.board, p.engagement, 1 / 60)
+    return regionHeat(p.board, p.cursor)
+  }
+
+  it('reports where the region settles, and not the heat it is at times 1.5', () => {
+    const p = cluster()
+    const measured = settled(p)
+    const lines = inspect(p, frameOf(p.board))
+    const printed = lines[5] ?? ''
+
+    // The claim, in the only form that can be checked: the panel's figure is what a
+    // long run of the integrator arrives at, to a tenth.
+    expect(printed).toBe(`${label('heat')} ${measured.toFixed(1)}`)
+  })
+
+  it('is not the old figure, which was neither a heat nor an equilibrium', () => {
+    // `equilibrium(regionHeat(...))` is heat x 1.5, and its error is unbounded in the
+    // heat: at rest it under-reports and at a settled cluster it over-reports by half
+    // again. This is the asymmetry §133.6 asks for rather than a value — the two
+    // quantities must be measurably different on a board the game can be in, or the
+    // fix is untested by construction.
+    const p = cluster()
+    const measured = settled(p)
+    const wrong = equilibrium(regionHeat(p.board, p.cursor))
+    expect(Math.abs(wrong - measured)).toBeGreaterThan(1)
+    expect(inspect(p, frameOf(p.board))[5] ?? '').not.toContain(wrong.toFixed(1))
+  })
+
+  it('answers the question the line is read for: which side of the line it settles on', () => {
+    // Two Arcs settle stably below Lattice's overclock threshold. The old figure put
+    // them above it — a false crossing on the quantity §116.5 calls the game's real
+    // minute-scale decision, in the panel §69.3 exists to make it legible with.
+    const p = createPrototype()
+    place(p.board, 'arc', { x: 1, y: 1 }, 0)
+    place(p.board, 'arc', { x: 2, y: 1 }, 0)
+    p.cursor = { x: 1, y: 1 }
+    p.engagement = 1
+
+    const measured = settled(p)
+    const t = thresholds(p.board)
+    expect(measured).toBeLessThan(t.overclock)
+    expect(equilibrium(regionHeat(p.board, p.cursor))).toBeGreaterThan(t.overclock)
+    expect(inspect(p, frameOf(p.board))[5] ?? '').toContain(measured.toFixed(1))
+  })
+
+  it('falls to the passive floor when nothing is engaged, and rises with the crowd', () => {
+    // §51.2's whole model in one line of the panel: generation is `1.0 passive +
+    // work`, so the settled figure must MOVE with engagement. The old figure did too —
+    // it moved with current heat — which is why nothing caught this by watching it.
+    const p = cluster()
+    p.engagement = 0
+    const cold = equilibrium(regionGeneration(p.board, p.cursor, p.engagement))
+    p.engagement = 1
+    const hot = equilibrium(regionGeneration(p.board, p.cursor, p.engagement))
+    expect(hot).toBeGreaterThan(cold)
+    expect(cold).toBeGreaterThan(0)
+  })
+})
+
+describe('A-062 · §112.2 the preview describes the act a confirm performs', () => {
+  const carrying = (): Prototype => {
+    const p = createPrototype()
+    place(p.board, 'arc', { x: 1, y: 1 }, 0)
+    place(p.board, 'orbiter', { x: 3, y: 1 }, 0)
+    p.holding = TRAY.indexOf('mine')
+    p.cursor = { x: 3, y: 1 }
+    apply(p, 'confirm')                 // pick the Orbiter up
+    expect(p.carrying).toBeGreaterThanOrEqual(0)
+    return p
+  }
+
+  it('projects the MOVE while carrying, never the tray part a confirm ignores', () => {
+    const p = carrying()
+    p.cursor = { x: 3, y: 3 }
+    const shown = preview(p)
+    if (shown === undefined) throw new Error('no preview')
+
+    expect(shown.verb).toBe('move')
+    expect(shown.placed.id).toBe('orbiter')
+    // And the tray part is nowhere in the projection, which is what the ghost, the
+    // HOLDING panel and the AFTER line were all outlining before the fix.
+    expect(shown.board.placements.map((q) => q.id)).not.toContain('mine')
+  })
+
+  it('agrees with what a confirm then does — the same board, not a second answer', () => {
+    const p = carrying()
+    p.cursor = { x: 3, y: 3 }
+    const shown = preview(p)
+    if (shown === undefined) throw new Error('no preview')
+    const projected = shown.board.placements.map((q) => `${q.id}@${q.anchor.x},${q.anchor.y}`)
+
+    apply(p, 'confirm')
+    expect(p.board.placements.map((q) => `${q.id}@${q.anchor.x},${q.anchor.y}`))
+      .toEqual(projected)
+  })
+
+  it('does not call a legal move blocked because the component still holds its cells', () => {
+    // The quietest half, and the one a player reads as the board lying: a carried
+    // component still occupies its old cells until the move resolves, so projecting a
+    // PLACE onto a neighbouring cell collided with the component being moved. The
+    // preview said BLOCKED and the confirm then succeeded.
+    const p = carrying()
+    p.cursor = { x: 3, y: 2 }           // one step from the Orbiter's own cell
+    expect(preview(p)?.verb).toBe('move')
+    apply(p, 'confirm')
+    expect(p.board.placements.find((q) => q.id === 'orbiter')?.anchor).toEqual({ x: 3, y: 2 })
+  })
+
+  it('still projects a PLACE when nothing is carried', () => {
+    const p = createPrototype()
+    p.holding = TRAY.indexOf('arc')
+    p.cursor = { x: 2, y: 2 }
+    const shown = preview(p)
+    expect(shown?.verb).toBe('place')
+    expect(shown?.placed.id).toBe('arc')
   })
 })

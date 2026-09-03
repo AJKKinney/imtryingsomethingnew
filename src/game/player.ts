@@ -65,8 +65,18 @@ export const step = (world: World): void => {
   player.y += player.vy * DT
 
   if (player.dashTicks > 0) {
+    // §9 — i-frames THROUGHOUT the dash, and the `+ 1` is what makes that true rather
+    // than nearly true. The collision step reads `iframes` at step 14, AFTER the
+    // shared decrement below, so a cover taken from the already-decremented
+    // `dashTicks` is spent one tick early — and it is spent twice, because the
+    // decrement then applies to it as well. Measured on a 12-tick dash: i-frames hit
+    // zero at dashTicks 1, so the last two ticks of every dash were unprotected while
+    // the player was still committed to the direction and still moving at 700 u/s.
+    // That is 17% of the verb §95.2 repriced to 5 s specifically so that spending it
+    // is a decision, handing back damage on a window the player was told was safe.
+    const cover = player.dashTicks + 1
+    player.iframes = player.iframes > cover ? player.iframes : cover
     player.dashTicks -= 1
-    player.iframes = player.iframes > player.dashTicks ? player.iframes : player.dashTicks
   }
   if (player.dashCooldown > 0) player.dashCooldown -= 1
   if (player.iframes > 0) player.iframes -= 1

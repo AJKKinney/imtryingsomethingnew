@@ -13,7 +13,10 @@ import { createWorld, type World } from '../../src/core/world.ts'
 import { advance, clock, runTick } from '../../src/gen/loop.ts'
 import { nextFloat, rng } from '../../src/core/rng.ts'
 import { quantise } from '../../src/core/input.ts'
-import { PLAYER_INTEGRITY } from '../../src/data/player.ts'
+import { DASH_DURATION, DASH_SPEED, PLAYER_INTEGRITY } from '../../src/data/player.ts'
+
+/** §142.4: the dash is stated in seconds and the simulation is a fixed 60 Hz step. */
+const DASH_TICKS = Math.round(DASH_DURATION * 60)
 import { step as spawnStep } from '../../src/game/spawner.ts'
 import { digest, feed, hasher } from '../golden.ts'
 
@@ -240,5 +243,63 @@ describe('A-057 · §30 the pool recycles, so the spawner initialises', () => {
     const w = createWorld(7)
     for (let i = 0; i < 1800; i++) { w.player.integrity = PLAYER_INTEGRITY; runTick(w) }
     expect(w.enemies.nextId - 1).toBeGreaterThan(w.enemies.count)
+  })
+})
+
+describe('A-060 · §9 the dash grants i-frames THROUGHOUT the dash', () => {
+  /**
+   * §9 states the vent-dash in six words — *"i-frames throughout"* — and the ordering
+   * is what makes that hard rather than the rule. The player step is 6 and collision
+   * is 14, so what collision sees is the value the player step LEFT, after its own
+   * end-of-tick decrement. A cover taken from the already-decremented `dashTicks` is
+   * therefore spent early, and spent twice, because the decrement applies to it too.
+   */
+  const dashing = (): { covered: boolean[]; speeds: number[] } => {
+    const world = createWorld(0x5eed)
+    world.live.moveX = 1
+    world.live.moveY = 0
+    world.live.dash = true
+    const covered: boolean[] = []
+    const speeds: number[] = []
+    for (let t = 0; t < DASH_TICKS + 4; t++) {
+      // A tick moves at dash speed if the dash is running when the step begins — on
+      // the first tick because the step starts it, thereafter while `dashTicks` holds.
+      const moving = t === 0 || world.player.dashTicks > 0
+      runTick(world)
+      world.live.dash = false
+      if (!moving) continue
+      covered.push(world.player.iframes > 0)
+      speeds.push(Math.hypot(world.player.vx, world.player.vy))
+    }
+    return { covered, speeds }
+  }
+
+  it('leaves i-frames standing on every tick the player is committed to the dash', () => {
+    const { covered } = dashing()
+    expect(covered).toHaveLength(DASH_TICKS)
+    expect(covered.every((x) => x)).toBe(true)
+  })
+
+  it('is not vacuous — those are the ticks the player is moving at dash speed', () => {
+    // Without this the assertion above is satisfied by a dash that does not move, and
+    // §110.3's whole point is that the commitment is what the i-frames pay for: the
+    // player is travelling at DASH_SPEED and cannot take the direction back.
+    const { speeds } = dashing()
+    expect(speeds).toHaveLength(DASH_TICKS)
+    for (const s of speeds) expect(s).toBeCloseTo(DASH_SPEED, 6)
+  })
+
+  it('ends when the dash ends, so the cover is a window and not a grant', () => {
+    // The other direction, and the one that stops the fix being "set iframes high":
+    // §37.2's global 0.5 s window is the only i-frame source that outlives a dash.
+    const world = createWorld(0x5eed)
+    world.live.moveX = 1
+    world.live.dash = true
+    for (let t = 0; t < DASH_TICKS + 4; t++) {
+      runTick(world)
+      world.live.dash = false
+    }
+    expect(world.player.dashTicks).toBe(0)
+    expect(world.player.iframes).toBe(0)
   })
 })

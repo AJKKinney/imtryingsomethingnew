@@ -103,7 +103,20 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // A-058: `scrap` splices and `carrying` is an index. A-059: step 16 is ordered and
   // the implementation interleaved (a) with (c), which made a board's heat depend on
   // the order its components were placed in.
-  1: 28, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // Phase 1 was 28 and is 29, phase 2 gains three of its remaining thirteen — a
+  // second bug pass over the same built game, and the four it found sit in the same
+  // class: a quantity computed correctly and then read at the wrong moment, in the
+  // wrong unit, for the wrong verb, or through the wrong mapping. A-060: the player
+  // step decrements i-frames and `dashTicks` together, so a cover taken from the
+  // decremented count is spent early AND twice, and the last ticks of every dash were
+  // unprotected. A-061: `equilibrium` takes a generation and the panel handed it a
+  // heat, so the one number a placement turns on printed as `heat x 1.5`. A-062: the
+  // preview projected a PLACE while `apply` resolves a MOVE first, so the ghost, the
+  // HOLDING panel and the AFTER line all described an act the game would not perform.
+  // A-063: the heat ramp was linear in `heat / meltdown` against thresholds §58.5
+  // made geometry-relative, so a whole band drew overclocked and simulated safe.
+  1: 29, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -305,6 +318,22 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-059', phase: 2, tier: 'unit', cadence: 'push', source: '§142.5, §112.4', status: 'implemented',
       statement: 'A tick of heat resolves every overclock crossing against the field as it stood at the START of the tick, so two boards with identical layouts hold identical heat whatever order their components were placed in.',
       why: '§142.5\'s step 16 is ordered — (a) accumulate generation, (b) recompute the regions, (c) resolve the crossings — and the implementation read the region field per placement, inside the accumulation loop, so each component\'s overclock state was judged against a field already carrying this tick\'s generation from every component earlier in the array. Measured on four Arcs in one region: the same layout built in a different order settles at 5.8649 against 5.8653. Small, and the size is not the point — placement order is not a property of an arrangement, §112.4 makes heat travel with the component precisely so that no sequence of edits changes what a layout is worth, and §14 would have made the order part of the golden hash the moment the board joins the world at steps 4, 5 and 16. It is also what took the pass from O(n) to O(n^2): the region field walks every placement and was being rebuilt once per placement per tick. §26 has said since pass 26 that "ordering IS the simulation\'s semantics"; this is a step whose own declared order was not the order it ran in.' }),
+
+  a({ id: 'A-060', phase: 1, tier: 'unit', cadence: 'push', source: '§9, §142.5', status: 'implemented',
+      statement: 'The vent-dash leaves i-frames standing on every tick the player is committed to it, and on no tick after — measured where the collision step reads them.',
+      why: '§9 states the verb in six words — "i-frames throughout" — and the ORDERING is what makes that hard rather than the rule. The player step is 6 and collision is 14, so what collision sees is the value the player step left behind, after its own end-of-tick decrement; a cover taken from the already-decremented `dashTicks` is therefore spent early, and spent twice, because the shared decrement applies to it as well. Measured on a 12-tick dash: i-frames reached zero while `dashTicks` still stood, so the last ticks of every dash were unprotected WHILE THE PLAYER WAS STILL TRAVELLING AT 700 u/s AND COULD NOT TAKE THE DIRECTION BACK. §95.2 repriced the dash from 3 s to 5 s specifically so that spending it is a decision; handing damage back on the window the player was told was safe is §2\'s cheated, on the half of §88.2\'s multiplicative pair the board cannot help with. The non-vacuity clause is not decoration: without it the assertion is satisfied by a dash that does not move, and §110.3\'s whole argument is that the commitment is what the i-frames pay for.' }),
+
+  a({ id: 'A-061', phase: 2, tier: 'unit', cadence: 'push', source: '§69.3, §31.1', status: 'implemented',
+      statement: 'The inspect panel\'s settled figure is the equilibrium of the region\'s GENERATION at the current engagement — the value §31.1\'s integrator actually arrives at — and never a function of the heat the region is at.',
+      why: '`equilibrium` takes a generation and returns `generation x 1.5`; the panel passed it a HEAT, so it printed `heat x 1.5`, which is neither quantity. It type-checked because both are numbers and it read plausibly because it moved when heat moved — which is exactly why watching the line could not catch it. Measured: a four-Arc region settling at 23.78 was announced as 35.67, and two Arcs settled at 8.9 against Lattice\'s overclock line of 10 read 13.4 — a region sitting stably safe, announced as past the threshold, in the panel §69.3 exists to make that legible with and on the decision §116.5 calls the game\'s real minute-scale one. The error is unbounded in the heat, so it under-reports at rest and over-reports by half again once a cluster settles. A-051 asserted the line existed and could not see this, because it compared the panel against the same wrong expression.' }),
+
+  a({ id: 'A-062', phase: 2, tier: 'unit', cadence: 'push', source: '§112.2, §76.2', status: 'implemented',
+      statement: 'The projection a confirm is previewed by is the branch `apply` will take: while a component is carried it projects that component\'s MOVE, and the projected board is the board the confirm produces.',
+      why: 'The preview projected a PLACE of the tray part unconditionally, and `apply` resolves a MOVE first — so while a component was picked up, the ghost outlined the wrong footprint, the HOLDING panel named the wrong part and the AFTER line priced the wrong part\'s power and heat, for an act the game was not going to perform. It is quietest where it is worst: a carried component still occupies its old cells until the move resolves, so projecting a place onto a neighbouring cell collided with the very component being moved, and a legal move routinely previewed as AFTER BLOCKED and then succeeded. §76.2 makes placement juice CAUSALITY rather than feel, and §9\'s first gate reported "I could act but saw no consequence"; this is that one turn worse, because the consequence shown belonged to a different act. §134.6\'s rule is the general form — a display declares the quantity it renders — and the quantity here is a verb.' }),
+
+  a({ id: 'A-063', phase: 2, tier: 'unit', cadence: 'push', source: '§134.2, §58.5', status: 'implemented',
+      statement: 'The heat ramp is anchored to the board\'s own threshold pair rather than interpolated across its span: on every one of the six board states the game can be in, a cell is drawn at or above the overclock tint exactly when the simulation calls it overclocked, and reaches the last band exactly at meltdown.',
+      why: 'A ramp linear in `heat / meltdown` puts a fixed FRACTION of the span at each band, and the thresholds are not at fixed fractions — §58.5 made every pair geometry-relative (10/22, 7/19, 7/17, and 7/19 once Ring expands) precisely so a rung means the same thing on cores whose regions differ in size. Measured on Lattice: the amber began at 8.81 against an overclock line of 10, so the whole 8.81-10 band was painted overclocked while the simulation called it safe — a false threshold-crossing, all run, on the surface §68 calls the product, and §2\'s cheated pointing the other way from the usual one. A-050 asserts WHICH QUANTITY the fill carries and this asserts WHAT THE COLOUR MEANS; the second is what was broken, and A-050\'s own exact-set check passed because it sampled a single board whose regions never landed in the gap. §133.6\'s rule is why the test sweeps: a mapping is guarded by an asymmetry over the whole range, never by a value at a point.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

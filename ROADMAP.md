@@ -160,13 +160,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 27/28 implemented · 28 planned (seeded)
-phase 2: 20/31 implemented · 44 planned (31 seeded)
+phase 1: 28/29 implemented · 29 planned (seeded)
+phase 2: 23/34 implemented · 44 planned (34 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   47/59 implemented · 276 planned
+total:   51/63 implemented · 277 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -397,6 +397,30 @@ a silent timeout.
 invisible in play and unreachable by any current test — because the board is not in the
 world yet. §14's golden hash would have made it permanent the day it arrived there, which
 is §26's silent desync waiting with a date on it.
+
+**A second pass, asked for on the same build.** Four more, and they share a shape the first
+four did not: every one is a quantity the simulation computes **correctly** and a consumer
+reads at the wrong moment, in the wrong unit, for the wrong verb, or through the wrong
+mapping. Nothing here is a bad number; four things are bad *readings* of good ones.
+
+| | What was wrong | How it was measured |
+|---|---|---|
+| **A-060** | The player step decrements `iframes` and `dashTicks` together, and collision reads i-frames at step 14 — so a cover taken from the already-decremented count is spent early **and spent twice** | the dash's closing ticks ran with `iframes` at 0 while the player was still committed and travelling at **700 u/s** |
+| **A-061** | `equilibrium` takes a **generation** and the inspect panel handed it a **heat**, so the one number a placement decision turns on printed as `heat × 1.5` | a region settling at **23.78** announced **35.67**; two Arcs settled at 8.9 against a line of 10 read **13.4** |
+| **A-062** | The preview projected a **place** of the tray part while `apply` resolves a **move** first, so the ghost, the HOLDING panel and the AFTER line all described an act the game would not perform | a carried component still holds its old cells, so a legal one-cell move projected **`AFTER BLOCKED`** and then succeeded |
+| **A-063** | The heat ramp was linear in `heat ÷ meltdown` against thresholds §58.5 made **geometry-relative**, so a fixed fraction of the span never lands on a threshold | on Lattice the overclock tint began at **8.81 against a line of 10** — the whole band drew overclocked and simulated safe |
+
+**The last one is the one the existing test should have caught, and could not.** A-050 already
+asserts *the set drawn at or above the overclock tint is the set the simulation reports
+overclocked* — and it passed, because it sampled **one** board whose regions never landed in
+the 8.81–10 gap. A-063 is therefore not a stronger version of A-050 but a different claim:
+A-050 asks **which quantity** the fill carries and A-063 asks **what the colour means**, and
+it sweeps all six board states rather than testing a point. §133.6 wrote the rule two passes
+before the defect existed — *a mapping is guarded by an asymmetry over the whole range, never
+by a value at a point* — and this is the first time it has been paid.
+
+**Each fix was verified by reverting it.** All four tests fail on the pre-fix source and pass
+on the fixed one, which is the only evidence that an assertion tests anything.
 
 ---
 

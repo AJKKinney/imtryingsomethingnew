@@ -36,7 +36,9 @@ import {
   cellsOf, createBoard, drawOf, key, mask, move, place, scrap, shapeOf, rotate, thresholds,
   type Board, type Cell, type ComponentId, type Placement, type Rotation,
 } from './prototype-imports.ts'
-import { equilibrium, isOverclocked, regionHeat, stateOf, tickHeat } from '../grid/heat.ts'
+import {
+  equilibrium, isOverclocked, regionGeneration, regionHeat, stateOf, tickHeat,
+} from '../grid/heat.ts'
 import { reaches, runRate } from '../grid/power.ts'
 import { LABELS } from '../data/strings.ts'
 import { LATE_TARGETS_HIT } from '../data/heat.ts'
@@ -216,15 +218,23 @@ export const inspect = (p: Prototype, frame: BoardFrame): readonly string[] => {
   }
   const delivered = Math.round(runRate(frame.power, placed) * drawOf(placed.id))
   const emitter = EMITTERS[placed.id as keyof typeof EMITTERS] as { rate: number } | undefined
-  const generation = emitter === undefined ? 0
+  const targets = emitter === undefined ? 0
     : (LATE_TARGETS_HIT[placed.id] ?? 0) * p.engagement
+  // Where this region SETTLES at the current engagement, which is the one number a
+  // placement decision turns on and the one this line printed wrong: it passed the
+  // region's HEAT to `equilibrium`, which takes a GENERATION, so it reported
+  // `heat x 1.5` — a quantity that is neither. Measured on two Arcs settled at 8.9
+  // against an overclock line of 10, it read 13.4: a region sitting stably safe,
+  // announced as past the threshold, on the surface §69.3 exists to make legible and
+  // in the decision §116.5 calls the game's real minute-scale one.
+  const settles = equilibrium(regionGeneration(p.board, p.cursor, p.engagement))
   lines.push(
     reaches(frame.power, placed)
       ? `${text('power')} ${delivered} / ${drawOf(placed.id)}`
       : `${text('power')} ${text('unrouted')}`,
     `${text(placed.id)} ${isOverclocked(p.board, placed) ? text('overclock') : stateOf(p.board, region)}`,
-    `${text('engagement')} ${Math.round(p.engagement * 100)} ${generation.toFixed(1)}`,
-    `${text('heat')} ${equilibrium(region).toFixed(1)}`,
+    `${text('engagement')} ${Math.round(p.engagement * 100)} ${targets.toFixed(1)}`,
+    `${text('heat')} ${settles.toFixed(1)}`,
   )
   return lines
 }
@@ -252,14 +262,42 @@ export interface PrototypeLayout {
  * shows and the number the player gets are the same number by construction, and
  * cannot drift the way a second implementation drifts (§134.2's exact failure).
  */
-const project = (p: Prototype): { board: Board; placed: Placement } | undefined => {
+export interface Preview {
+  /** Which verb a confirm would perform here — the same branch `apply` takes. */
+  readonly verb: 'place' | 'move'
+  readonly board: Board
+  readonly placed: Placement
+}
+
+/**
+ * What a confirm would do — **the same branch `apply('confirm')` takes**, not a
+ * second answer to the same question.
+ *
+ * It projected a PLACE unconditionally, and `apply` resolves a MOVE first: while a
+ * component was picked up, the ghost outlined the tray part's footprint, the HOLDING
+ * panel named the tray part, and the AFTER line priced the tray part's power and
+ * heat — for a confirm that would move the carried component instead. Worse where it
+ * was quietest: the carried component still occupies its old cells, so a legal move
+ * onto a neighbouring cell routinely projected as `AFTER BLOCKED` and then succeeded.
+ * The first gate reported *"I could act but saw no consequence"*; this is the same
+ * failure one turn worse, because the consequence shown was for a different act.
+ */
+const project = (p: Prototype): Preview | undefined => {
+  const copy: Board = { ...p.board, placements: [...p.board.placements] }
+  if (p.carrying >= 0) {
+    if (!move(copy, p.carrying, p.cursor, p.rotation)) return undefined
+    const placed = copy.placements[p.carrying]
+    return placed === undefined ? undefined : { verb: 'move', board: copy, placed }
+  }
   const id = TRAY[p.holding]
   if (id === undefined) return undefined
-  const copy: Board = { ...p.board, placements: [...p.board.placements] }
   if (!place(copy, id, p.cursor, p.rotation)) return undefined
   const placed = copy.placements[copy.placements.length - 1]
-  return placed === undefined ? undefined : { board: copy, placed }
+  return placed === undefined ? undefined : { verb: 'place', board: copy, placed }
 }
+
+/** Exported so a test reads the preview from the module that draws it (§134.6). */
+export const preview = project
 
 /** §104.5's eighth core hue — the brightest cool, reserved here for the cursor. */
 const CURSOR = CORE_HUES[7] ?? '#eaf6ff'
@@ -365,7 +403,11 @@ export const drawPrototype = (
 
   // ── what is held, and what it would cost ────────────────────────────────────
   const px = layout.panelX
-  const held = TRAY[p.holding]
+  // While carrying, the panel names the component in hand rather than the tray part
+  // the player is not about to place — one object described by the ghost, the panel
+  // and the AFTER line, because they are all the same confirm.
+  const carried = p.carrying >= 0 ? p.board.placements[p.carrying] : undefined
+  const held = carried?.id ?? TRAY[p.holding]
   draws += drawText(surface, atlas, text('holding'), s, px, v.y)
   if (held !== undefined) {
     const shape = rotate(shapeOf(held), p.rotation)

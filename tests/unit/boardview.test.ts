@@ -13,10 +13,12 @@
 import { describe, expect, it } from 'vitest'
 import { stubSurface } from '../surface.ts'
 import {
-  BEZEL_BOARD_DRAWS, boosted, dashesFor, drawBoard, frameOf, heatAlpha, heatFill,
-  drawCore, heatTint, traceWidth, type BoardView,
+  BEZEL_BOARD_DRAWS, SAFE_BANDS, boosted, dashesFor, drawBoard, frameOf, heatAlpha,
+  heatFill, drawCore, heatTint, traceWidth, type BoardView,
 } from '../../src/render/boardview.ts'
-import { addHeat, cellsOf, createBoard, key, place, thresholds } from '../../src/grid/board.ts'
+import {
+  addHeat, cellsOf, createBoard, expand, key, place, thresholds,
+} from '../../src/grid/board.ts'
 import { cellHeat, regionHeat } from '../../src/grid/heat.ts'
 import { HEAT_RAMP, SUBSTRATE } from '../../src/gen/palette.ts'
 import type { Cell } from '../../src/data/cores.ts'
@@ -264,5 +266,76 @@ describe('A-053 · §85.2 the core, which is the only thing on an empty board', 
     const corners = broken.filter((p) =>
       Math.abs(Math.abs(p.x - CENTRE.x) - Math.abs(p.y - CENTRE.y)) < 1e-9)
     expect(corners).toHaveLength(4)
+  })
+})
+
+describe('A-063 · §134.2 the ramp is anchored to the core’s own thresholds', () => {
+  /** All six board states the game can be in — three cores, base and expanded. */
+  const BOARDS = (['lattice', 'spindle', 'ring'] as const).flatMap((core) =>
+    [false, true].map((grown) => {
+      const board = createBoard(core)
+      if (grown) expand(board)
+      return { core, grown, board }
+    }))
+
+  const index = (board: ReturnType<typeof createBoard>, heat: number): number =>
+    HEAT_RAMP.indexOf(heatTint(board, heat))
+
+  it('crosses into the hot half exactly at the overclock threshold, on every board', () => {
+    // The defect, in the form no sampled board could show it: a ramp linear in
+    // `heat / meltdown` put Lattice's amber at 8.81 against a line of 10, so the whole
+    // band between them drew overclocked and simulated safe. §133.6's rule is that a
+    // property like this is guarded by sweeping for the ASYMMETRY, because any single
+    // board is one point and the old test's board never landed in the gap.
+    for (const { core, grown, board } of BOARDS) {
+      const t = thresholds(board)
+      const hot = index(board, t.overclock)
+      const where = `${core}${grown ? ' expanded' : ''}`
+      expect(hot, where).toBe(SAFE_BANDS)
+      for (let n = 0; n <= t.meltdown * 1000; n++) {
+        const heat = n / 1000
+        expect(index(board, heat) >= hot, `${where} at ${heat}`).toBe(heat >= t.overclock)
+      }
+    }
+  })
+
+  it('reaches the last band exactly at meltdown, and not before', () => {
+    for (const { core, grown, board } of BOARDS) {
+      const t = thresholds(board)
+      const last = HEAT_RAMP.length - 1
+      const where = `${core}${grown ? ' expanded' : ''}`
+      expect(index(board, t.meltdown), where).toBe(last)
+      expect(index(board, t.meltdown - 0.001), where).toBeLessThan(last)
+      expect(index(board, t.meltdown * 4), where).toBe(last)
+    }
+  })
+
+  it('means the same STATE on cores whose thresholds differ, which is why it is anchored', () => {
+    // §58.5 made every threshold geometry-relative — 10/22, 7/19, 7/17 — and a ramp
+    // interpolated across the span makes one colour mean three different states. The
+    // player reads a hue, not a pair, so the hue is what has to carry the ladder.
+    const tints = BOARDS.map(({ board }) => {
+      const t = thresholds(board)
+      return {
+        safe: heatTint(board, t.overclock * 0.5),
+        atLine: heatTint(board, t.overclock),
+        melting: heatTint(board, t.meltdown),
+      }
+    })
+    const first = tints[0]
+    if (first === undefined) throw new Error('no boards')
+    for (const x of tints) expect(x).toEqual(first)
+  })
+
+  it('is monotone, so a hotter region is never drawn cooler', () => {
+    for (const { core, grown, board } of BOARDS) {
+      let previous = -1
+      for (let n = 0; n <= thresholds(board).meltdown * 200; n++) {
+        const at = index(board, n / 200)
+        expect(at, `${core}${grown ? ' expanded' : ''} at ${n / 200}`)
+          .toBeGreaterThanOrEqual(previous)
+        previous = at
+      }
+    }
   })
 })
