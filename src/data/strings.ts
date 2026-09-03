@@ -173,6 +173,13 @@ export const LABELS: readonly Label[] = Object.freeze([
   label('hud', 'here', 'HERE'),
   label('hud', 'after', 'AFTER'),
   label('hud', 'blocked', 'BLOCKED'),
+  // §9 — no revives, so a finished run has to SAY it is finished. Two labels rather
+  // than a sentence: §102.2's boundary puts prose on the human's side, and "the run
+  // ended and a key starts another" is a state and an affordance, which are labels.
+  // One label, not two. §102.2 budgets the label list and the budget is 144: two
+  // entries for one line would have spent the last of it on a space. It is a whole
+  // word to the atlas either way (§147.1), so the join costs nothing.
+  label('hud', 'runOver', 'RUN OVER · ANY KEY'),
   // ── the verbs (§112.1 — the board's operational set, one label each)
   label('action', 'place', 'PLACE'),
   label('action', 'move', 'MOVE'),

@@ -106,30 +106,50 @@ const boot = (): void => {
   // local-only: 220 KB against 16 KB for everything else the game persists, rewritten
   // on every suspend, and nobody resumes a mid-run on another device.
   const SLOT = 'meltline.snapshot'
-  const world = ((): World => {
+  const newWorld = (): World => createWorld(1)
+  let world = ((): World => {
     try {
       const saved = window.localStorage.getItem(SLOT)
-      if (saved === null) return createWorld(1)
+      if (saved === null) return newWorld()
       const parsed = JSON.parse(saved) as { version: number; contentHash: string; world: World }
       const result = restore(parsed, hash)
       // §66.2 — reject, never clamp. A snapshot from a build with different numbers
       // is refused and the run starts fresh, rather than resuming into a world that
       // differs from the saved one deterministically and forever.
-      if (!result.ok) return createWorld(1)
+      if (!result.ok) return newWorld()
       return result.world
     } catch {
-      return createWorld(1)
+      return newWorld()
     }
   })()
 
   const save = (): void => {
     try {
+      // §9 — a finished run is not a resumable one. Persisting it meant the FIRST
+      // death poisoned the link permanently: the next visit restored a world already
+      // over, and with nothing gating the tick that world kept running to -1,160
+      // integrity. A dead run clears the slot instead, so a reload is a fresh start.
+      if (world.over) { window.localStorage.removeItem(SLOT); return }
       window.localStorage.setItem(SLOT, JSON.stringify({
         version: SNAPSHOT_VERSION, contentHash: hash, world: copyWorld(world),
       }))
     } catch {
       // A full or disabled store is not a reason to interrupt a run.
     }
+  }
+
+  /**
+   * §9 — no revives, so the only way out of a finished run is a new one.
+   *
+   * The world is replaced rather than reset in place, because §14 makes a run a pure
+   * function of (seed, input log) and a world mutated back toward its start is
+   * neither: it is a world with a history the log does not contain. Everything that
+   * reads `world` reads the binding, so the swap is the whole mechanism.
+   */
+  const restart = (): void => {
+    world = newWorld()
+    c.accumulator = 0
+    try { window.localStorage.removeItem(SLOT) } catch { /* nothing to clear */ }
   }
 
   // The host writes intent; step 2 records it. A key held down is a state the
@@ -158,7 +178,10 @@ const boot = (): void => {
   window.addEventListener('pagehide', save)
   // Any input leaves §9's auto-pause. The accumulator is already empty, so nothing
   // catches up — §3.B: fast-forwarding through a lid-close is a death nobody saw.
-  window.addEventListener('keydown', () => { if (world.paused) resume(c, world) })
+  window.addEventListener('keydown', () => {
+    if (world.over) { restart(); return }
+    if (world.paused) resume(c, world)
+  })
 
   // §82.2 — ONE board, two tabs. The RUN tab and the WORKBENCH tab share this
   // object, so the difference between them is not the machine but WHAT DRIVES ITS

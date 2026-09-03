@@ -295,6 +295,17 @@ export const applyDistribution = (board: Board, d: Distribution): void => {
  */
 export const tickHeat = (board: Board, engagement: number, seconds: number): void => {
   const eng = engagement < 0 ? 0 : engagement > 1 ? 1 : engagement
+  // §142.5's step 16 is ordered — (a) accumulate, (b) recompute the regions, (c)
+  // resolve the crossings — and reading the store per placement INTERLEAVES them:
+  // each component's overclock state would be judged against a field already
+  // carrying this tick's generation from every component before it in the array, so
+  // two boards with identical layouts and different placement ORDER diverged
+  // (measured: 5.8649 against 5.8653 on the same four Arcs). Placement order is not
+  // a property of an arrangement, and §14 would have made it one the moment the
+  // board joins the world. Snapshotting is also what makes this O(n) rather than
+  // O(n^2) — `cellHeat` walks every placement, and it was being rebuilt per
+  // placement per tick.
+  const store = cellHeat(board)
   for (const p of board.placements) {
     const emitter = EMITTERS[p.id as keyof typeof EMITTERS] as Emitter | undefined
     const targets = (LATE_TARGETS_HIT[p.id] ?? 0) * eng
@@ -302,7 +313,7 @@ export const tickHeat = (board: Board, engagement: number, seconds: number): voi
     // carry their own terms elsewhere (§59.3, §60.2) and none of them is per shot.
     const generation = emitter === undefined
       ? 0
-      : emitterGeneration(emitter.rate, targets, isOverclocked(board, p))
+      : emitterGeneration(emitter.rate, targets, isOverclocked(board, p, store))
     const cells = p.heat.length
     const perCell = cells === 0 ? 0 : generation / cells
     for (let i = 0; i < cells; i++) {

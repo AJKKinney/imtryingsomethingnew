@@ -160,13 +160,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 25/26 implemented · 26 planned (seeded)
-phase 2: 18/29 implemented · 42 planned (29 seeded)
+phase 1: 27/28 implemented · 28 planned (seeded)
+phase 2: 20/31 implemented · 44 planned (31 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   43/55 implemented · 272 planned
+total:   47/59 implemented · 276 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -371,6 +371,32 @@ worth keeping: three fault reports earlier in the same checkpoint found a render
 font link and §3's *presence is not permission* (A-052), and fixing both produced a board
 that drew. **A board that draws and says nothing is a different failure from a board that
 does not draw**, and only a person could have told the two apart.
+
+**A pass over the whole build for bugs, asked for directly.** Four defects, every one
+confirmed by running the real code rather than by reading it, and every one now pinned by
+an assertion that fails without the fix.
+
+| | What was wrong | How it was measured |
+|---|---|---|
+| **A-056** | `world.over` was written by step 19 and **read by nothing**, so a dead run kept ticking — and the host persisted that world and restored it, with no restart path anywhere, so the first death bricked the link for that browser | dead at tick 792, still running at 7,200 with **−1,160 integrity and 479 kills** |
+| **A-057** | `spawn` hands back a recycled slot and sets only the id; the spawner set every field except the one added last, so §46.2's hit flash arrived on enemies that had never been hit | **45 of 185 spawns** born inside the flash window, wearing the player's white |
+| **A-058** | `carrying` is an array index and `scrap` splices, so any scrap below it moved the wrong component — and a scrap above it left the index past the end, where `move` fails silently and never clears | pick up the Orbiter, scrap the Arc, confirm: **the Mine moves and the Orbiter stays put**, then the board stops accepting input |
+| **A-059** | The heat tick read the region field *inside* the accumulation loop, interleaving §142.5's step 16 (a) and (c), so **placement order became a property of the arrangement** | identical four-Arc layouts, different build order: **5.8649 against 5.8653** |
+
+**Two of the four are the process rather than the pass.** A-056's first fix guarded only the
+`advance()` call and **A-011's ×50-against-×1 symmetry check caught it** — a death can land
+mid-batch, so the gate belongs in the catch-up loop too, and that is an assertion written
+seventy sections earlier doing exactly the job it was written for. And landing A-056 turned
+three *passing* loop tests into an eleven-minute spin: they drove a standing player inside
+64 Swarmers to 600 ticks and that world dies at 582. **A gate that correctly stops a dead
+world is a hang for every unbounded `while (tick < n)` above it**, so every one of them is
+now bounded by `!world.over` and asserts the tick it reached — a legible failure instead of
+a silent timeout.
+
+**And the smallest one is the most characteristic.** A-059's divergence is 0.0004 heat,
+invisible in play and unreachable by any current test — because the board is not in the
+world yet. §14's golden hash would have made it permanent the day it arrived there, which
+is §26's silent desync waiting with a date on it.
 
 ---
 

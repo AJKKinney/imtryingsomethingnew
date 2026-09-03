@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ENGAGEMENT_FULL, ENGAGEMENT_RADIUS, TRAY, apply, createPrototype, drawPrototype,
-  engagementOf, inspect, tick, under,
+  engagementOf, inspect, tick, under, type Prototype,
 } from '../../src/ui/prototype.ts'
 import { frameOf } from '../../src/render/boardview.ts'
 import { cellsOf, drawOf, key, place, thresholds } from '../../src/grid/board.ts'
@@ -230,5 +230,70 @@ describe('§121.4 the gate counts DECISIONS, not opens', () => {
       'arc', 'orbiter', 'mine', 'flak', 'pulse', 'clock', 'focus', 'wire', 'bus', 'sink',
     ])
     for (const id of TRAY) expect(place(createPrototype().board, id, { x: 2, y: 1 }, 0)).toBe(true)
+  })
+})
+
+/**
+ * A-058 · §112.2, §7.2B — scrapping must not change what the board is carrying.
+ *
+ * The move verb identifies the carried component by ARRAY INDEX and scrapping
+ * SPLICES, so any scrap below the carried index shifted it. Pick up the Orbiter,
+ * scrap the Arc, confirm, and the Mine moves to the cursor while the Orbiter stays
+ * put — the board doing something the player did not ask for, silently, on the one
+ * surface §68 calls the product.
+ */
+describe('A-058 · §112.2 a carry survives a scrap, or ends', () => {
+  const withThree = (): Prototype => {
+    const p = createPrototype()
+    place(p.board, 'arc', { x: 1, y: 1 }, 0)
+    place(p.board, 'orbiter', { x: 3, y: 1 }, 0)
+    place(p.board, 'mine', { x: 1, y: 3 }, 0)
+    return p
+  }
+  const at = (p: Prototype, id: string): string | undefined =>
+    p.board.placements.find((q) => q.id === id) === undefined
+      ? undefined
+      : `${p.board.placements.find((q) => q.id === id)?.anchor.x},${p.board.placements.find((q) => q.id === id)?.anchor.y}`
+
+  it('moves the component the player picked up, not the one that inherited its index', () => {
+    const p = withThree()
+    p.cursor = { x: 3, y: 1 }
+    apply(p, 'confirm')                 // carry the Orbiter (index 1)
+    p.cursor = { x: 1, y: 1 }
+    apply(p, 'scrap')                   // remove the Arc (index 0) — indices shift
+    p.cursor = { x: 3, y: 3 }
+    apply(p, 'confirm')                 // and this must move the ORBITER
+
+    expect(at(p, 'orbiter')).toBe('3,3')
+    expect(at(p, 'mine')).toBe('1,3')
+    expect(p.carrying).toBe(-1)
+  })
+
+  it('releases the carry when the carried component is the one scrapped', () => {
+    const p = withThree()
+    p.cursor = { x: 1, y: 3 }
+    apply(p, 'confirm')                 // carry the Mine
+    apply(p, 'scrap')                   // and scrap it out from under the carry
+    expect(p.carrying).toBe(-1)
+    expect(at(p, 'mine')).toBeUndefined()
+
+    // The board still takes input: before the fix the index dangled past the end,
+    // `move` failed silently and never cleared, and every later confirm was a no-op.
+    p.cursor = { x: 3, y: 3 }
+    p.holding = TRAY.indexOf('pulse')
+    apply(p, 'confirm')
+    expect(at(p, 'pulse')).toBe('3,3')
+  })
+
+  it('leaves a carry below the scrap alone', () => {
+    const p = withThree()
+    p.cursor = { x: 1, y: 1 }
+    apply(p, 'confirm')                 // carry the Arc (index 0)
+    p.cursor = { x: 1, y: 3 }
+    apply(p, 'scrap')                   // scrap the Mine (index 2), above it
+    p.cursor = { x: 3, y: 3 }
+    apply(p, 'confirm')
+    expect(at(p, 'arc')).toBe('3,3')
+    expect(at(p, 'orbiter')).toBe('3,1')
   })
 })

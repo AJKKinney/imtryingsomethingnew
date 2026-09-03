@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**96 decisions · 56 supersede an earlier one · 58%.**
+**101 decisions · 56 supersede an earlier one · 55%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -121,7 +121,12 @@ resume budget honest as this file grows.
 | the cursor is white and the core is cyan | ui | commit 10 | — |
 | the substrate dot scales with the cell | render | commit 10 | — |
 | a weapon that fires leaves something to see | render | commit 10 | — |
+| an unbounded tick loop is a hang once a run can end | build | commit 10 | — |
 | a signature is measured in frames, not in ticks | render | commit 10 | — |
+| a run that is over stops running | field | commit 10 | — |
+| a spawned enemy is a new enemy | field | commit 10 | — |
+| scrapping never changes what the board is carrying | board | commit 10 | — |
+| a tick of heat resolves against the start-of-tick field | heat | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -131,7 +136,7 @@ resume budget honest as this file grows.
 
 ## The partitions
 
-### heat — 14
+### heat — 15
 
 **heat model** — §51.2 *(supersedes §31.1, §8)*
 
@@ -189,6 +194,10 @@ Four verbs, not three: build, buy, act, MOVE. Heat's work term reads a field qua
 
 Engagement is the count of enemies inside 120 u against twelve, clamped. Derived rather than chosen: §51.3 publishes Pulse at 120 u radial hitting TWELVE targets in a late-run crowd, so the number of enemies inside a 120 u circle is already the document's own measure of a full crowd. That makes §115.5's slider and the live field one axis rather than two that merely look alike, which is the whole point of running them against one board.
 
+**a tick of heat resolves against the start-of-tick field** — commit 10
+
+§142.5's step 16 is ordered — accumulate, recompute the regions, resolve the crossings — and reading the region field per placement inside the accumulation loop interleaves the first and the last: each component's overclock state was judged against a field already carrying this tick's generation from every placement earlier in the array, so PLACEMENT ORDER became a property of the arrangement. It is not one. Measured: identical four-Arc layouts built in different order settle at 5.8649 against 5.8653 — small, invisible, and exactly §26's silent desync waiting for the board to join the world, where §14's golden hash would have made it permanent. Snapshotting the store once is also what makes the tick O(n) rather than O(n^2), since `cellHeat` walks every placement and was being rebuilt per placement per tick.
+
 
 ### power — 6
 
@@ -217,7 +226,7 @@ Lattice 6, Spindle 6, Ring 9 — roughly half the original, because at the old v
 §135.1D says zero delivered power is reachable by exactly one path, §131.5's blackout. There are two: a component with no chain of occupied cells back to the core receives nothing, and nothing in the legality rules forbids one. Islands stay legal — forbidding them would delete the harshest form of the power constraint and the clearest reason conduits exist — and §85.2 makes the mistake the loudest thing on the board, since power is drawn as the trace's width and an island has no trace at all. What it costs is precision in §8: "never switching off" governs components the core can actually reach.
 
 
-### board — 4
+### board — 5
 
 **board expansion geometry** — §108.3 *(supersedes §8, §35.2)*
 
@@ -234,6 +243,10 @@ Heat is owned by the COMPONENT and travels with it. Taken the other way the move
 **the board is the product** — §68.2 *(supersedes §3.H, §20)*
 
 A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags, comparison set and store copy follow; auto-placement's "podcast venue" justification is retired and it stands on onboarding and accessibility, which are real.
+
+**scrapping never changes what the board is carrying** — commit 10
+
+§112.2's move verb identifies the carried component by ARRAY INDEX and §112.2's scrap SPLICES, so every index above the hole shifted under it. Measured: pick up the Orbiter, scrap the Arc, confirm — and the Mine moves while the Orbiter stays put, the board doing something the player did not ask for, silently, on the surface §68 calls the product. Scrapping a LATER component instead left the index past the end, where `move` fails and never clears, so the board stopped accepting input at all. The carry is released when it is the component scrapped and decremented when the hole is below it, which is the only reading under which a carry is a component rather than a position.
 
 
 ### render — 16
@@ -303,7 +316,7 @@ A dot fixed at two pixels is §83.2's finding one level down — that pass caugh
 The wedge is FILLED as well as stroked and held for ten ticks rather than six. Found by shipping the cone and being told, again, that no weapons were firing: at 3 shots a second a six-tick flash leaves the weapon dark in 77% of frames, and a 2 px outline in a frame already holding hundreds of stroked silhouettes is a shape to interpret rather than a discharge. Ten ticks covers half of Arc's own cadence, which is the band the assertion now states — long enough to read as fire, short enough that two shots never overlap, so it stays a FADE rather than a constant glow (§12's reduce-flashing rule). Both are RENDER constants: the simulation stamps `firedAt` and never reads either, so §14's golden hash does not move. §39.3's ceiling gains one draw, against a margin of a hundred.
 
 
-### field — 11
+### field — 13
 
 **enemy speeds** — §37.1 *(supersedes the original table)*
 
@@ -348,6 +361,14 @@ The substrate ending — traces stop, the ground goes dark — and a hard wall t
 **wear** — §130.2 *(supersedes §54.3)*
 
 -7.5% per meltdown to every OUTPUT-CARRYING component in the melting region, capped -25% per component, travelling with the component and cleared by claiming a derelict. §54.3's sentence scoped it per component and its table computed it per board — a 1.2x to 2.0x disagreement that stood for seventy-six passes.
+
+**a run that is over stops running** — commit 10
+
+§9 says the run ends when integrity does and no revives in v0.1. `world.over` was written by step 19 and read by NOTHING, so a dead run kept ticking: measured at -1,160 integrity and 479 kills after the death it had already recorded, with the host persisting that world to localStorage on the next visibility change and restoring it on the next visit — so the first death permanently bricked the link for that browser, and there was no restart path anywhere in the codebase. The gate is the right home for it, beside `paused` and the scale, because all three are the same question — is this world advancing — and §142.4 already answers it in one place rather than in each of ten steps. It is checked on the CALL and again inside the catch-up loop, because a death can land mid-batch: at scale 50 one call runs many ticks, and A-011's x50-against-x1 symmetry check caught exactly that, which is the whole reason it is asserted rather than assumed.
+
+**a spawned enemy is a new enemy** — commit 10
+
+§17 pre-allocates and never grows, so `spawn` hands back a slot a dead enemy was using and sets only the id — everything that makes it a NEW enemy is the spawner's job. It set every field except the one added last, and §46.2's hit flash is a STAMP compared against `world.tick`, so a recycled slot arrived still holding its predecessor's: measured at 45 of 185 spawns born inside the flash window, wearing the player's white in the pass that exists to separate warm from cool. The assertion checks every mutable field rather than the one that bit, because the next field added is forgotten the same way.
 
 
 ### draft — 11
@@ -397,7 +418,7 @@ Wire, Bus and Sink held from run one; Damper and Radiator earned by two thermal 
 A two-cell conduit and nothing more. The "+1 budget" clause is cut: undefined in both its appearances and unimplementable under 0-1 BFS, which forbids the negative edge weight it would need.
 
 
-### build — 16
+### build — 17
 
 **the stack** — §19
 
@@ -450,6 +471,10 @@ The three emitted files are named individually in `.gitignore` rather than the d
 **a STEP declaration is a claim to be wired** — commit 10 *(supersedes §142.6)*
 
 `tools/emit.ts` now fails on a module that declares a STEP and exports no `step()`. §142.1 counted twenty-two tick-ordered behaviours added since §26 with FOURTEEN having no step; the mirror failure is a step with no module, which reads as scheduled and generates an import of a function nobody wrote. `grid/heat` therefore declares no step at commit 10 — the board is beside the world rather than inside it, so there is no world attribute for it to own — and `gen/loop`'s PENDING list is the honest record until there is.
+
+**an unbounded tick loop is a hang once a run can end** — commit 10
+
+Every `while (world.tick < n) advance(...)` in the tests is now bounded by `!world.over` and asserts the tick it reached. Found by A-056 the moment it landed: three loops drove a standing player inside a cloud of 64 Swarmers to 600 ticks, and that world dies at 582 to 598 — so a gate that correctly stops a dead world turned three passing tests into an eleven-minute spin with no output. The targets drop to 480, which is eight seconds of game time and proves the gate exactly as well; the guard is what turns the next such collision into a legible failure rather than a silent CI timeout.
 
 **document sources are not partitions** — commit 9
 

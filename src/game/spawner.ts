@@ -47,5 +47,14 @@ export const step = (world: World): void => {
     e.vy = 0
     e.hp = def.hp * scale
     e.flags = 0
+    // Every mutable field, because the pool RECYCLES: `spawn` hands back a slot a
+    // dead enemy was using and sets only its id. §46.2's hit flash is a STAMP
+    // compared against `world.tick`, so a slot whose last occupant was hurt within
+    // the flash window handed its successor a live flash — measured at 45 of 185
+    // spawns, a quarter of the horde arriving in the PLAYER's white against §46.2's
+    // warm/cool faction read, which §46.5 moved into phase 1 precisely because a
+    // build that cannot tell your machine from the corruption produces feedback
+    // about the wrong thing entirely.
+    e.hurtAt = 0
   }
 }

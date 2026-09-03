@@ -94,7 +94,16 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // renderer drew the substrate, the enemies and the player, and Arc resolving
   // instantly (§38.2) meant a shot left nothing behind. Three shots a second, and
   // the only visible consequence was an enemy that stopped existing.
-  1: 26, 2: 42, 3: 148, 4: 26, 5: 18, 6: 12,
+  // Phase 1 was 26 and is 28, phase 2 was 42 and is 44 — a bug-hunting pass over the
+  // built game, and every one of the four is a defect no existing check could see
+  // because each lives BETWEEN two things that were individually correct. A-056:
+  // `world.over` was written by step 19 and read by nothing, so the run never ended
+  // and the host persisted the dead world. A-057: the pool recycles and the spawner
+  // set every field but one, so a quarter of the horde spawned wearing the hit flash.
+  // A-058: `scrap` splices and `carrying` is an index. A-059: step 16 is ordered and
+  // the implementation interleaved (a) with (c), which made a board's heat depend on
+  // the order its components were placed in.
+  1: 28, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -280,6 +289,22 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-055', phase: 1, tier: 'unit', cadence: 'push', source: '§46.2, §121.5', status: 'implemented',
       statement: 'A shot is recorded by the simulation and drawn by the renderer as the CONE it damaged, from the same boundary constant both use — FILLED, and held long enough to cover half the weapon\'s own cadence — while the hit flash costs no additional draw.',
       why: '§46.2 required a distinct firing signature per emitter in the pass that required distinct silhouettes, and only the silhouettes were built. Arc resolves instantly (§38.2), so a shot left no projectile behind and the simulation recorded nothing a renderer could read: the bullet heaven drew no weapons at all, three times a second, and the only visible consequence of firing was an enemy that stopped existing. The cone rather than a beam is the point — §121.5 measured Arc\'s coverage at 0.17 of the circle against 1.00 for five of the roster, in the emitter that opens every run, and coverage is precisely the axis §33.3\'s DPS table cannot see and the reason §89.3 retired it as a gate. Drawing the volume from the same constant the damage test uses is §134.6\'s rule pointed at the field: two copies of the boundary are two boundaries waiting to drift, and a wedge that does not match what it kills is §2\'s cheated. The fill and the window are both measured rather than chosen: a stroked outline is a shape to interpret in a frame already holding hundreds of stroked silhouettes, and at 3 shots a second a 6-tick flash leaves the weapon dark for 77% of frames — which is what the first playtest reported as *I cannot see any weapons firing* against a renderer that was already drawing it.' }),
+
+  a({ id: 'A-056', phase: 1, tier: 'unit', cadence: 'push', source: '§9, §142.4', status: 'implemented',
+      statement: 'A run whose integrity reaches zero stops advancing, is never persisted as resumable, and can be left.',
+      why: '§9 is one sentence — "no revives in v0.1" — and the simulation implemented half of it: step 19 set `world.over` and NOTHING read it, so a finished run kept ticking. Measured from the real loop: dead at tick 792, still running at tick 7,200 with integrity at -1,160 and 479 kills recorded after the death. The host then persisted that world to localStorage on the next visibility change and restored it on the next visit, so the FIRST death poisoned the link permanently — a new visitor got a fresh world, and a returning one got a corpse it had no path out of, because no section had ever specified a restart and none existed. The gate is the right home for the check because §142.4 already asks "is this world advancing" in exactly one place, and the alternative is ten steps each learning to check a flag. The three claims are one bug seen from the simulation, the store and the interface: a state with no exit is not a state, it is a stop.' }),
+
+  a({ id: 'A-057', phase: 1, tier: 'unit', cadence: 'push', source: '§46.2, §30', status: 'implemented',
+      statement: 'A spawned enemy carries no state from the slot\'s previous occupant — in particular it is never born already flashing.',
+      why: '§17 pre-allocates and never grows, so `spawn` hands back a slot a dead enemy was using and sets only the id; the spawner is what makes it a new enemy, and it set every field except the one added last. §46.2\'s hit flash is a STAMP compared against `world.tick` rather than a countdown — which is the right design and is exactly what makes a stale value live — so a slot whose last occupant died within the flash window handed its successor a flash it never earned. Measured over 3,600 ticks: 45 of 185 spawns, a quarter of the horde arriving in the PLAYER\'s white on the warm/cool axis §46.2 makes the faction read, in a frame holding hundreds of entities. §46.5 moved friend/foe language into phase 1 rather than phase 4 because "a build that cannot distinguish your shots from theirs produces feedback about the wrong thing entirely", and this is that, produced by a pool rather than by a palette. The assertion is written over ALL of an entity\'s mutable fields rather than over `hurtAt`, because the next field added will be forgotten the same way.' }),
+
+  a({ id: 'A-058', phase: 2, tier: 'unit', cadence: 'push', source: '§112.2, §7.2B', status: 'implemented',
+      statement: 'Scrapping never changes which component the board is carrying: the carried component is the one that moves, or the carry is released.',
+      why: '§112.2 added the move verb the game went a hundred and eleven sections without, and it identifies the carried component by ARRAY INDEX while §7.2B\'s scrap SPLICES — so any scrap below the carried index shifted it. Pick up the Orbiter, scrap the Arc, confirm, and the MINE moves to the cursor while the Orbiter stays put: the board did something the player did not ask for, on the surface §68 calls the product, with no error and nothing on screen to say so. Scrapping a component ABOVE it instead left the index past the end, where `move` returns false and never clears the carry — so every subsequent confirm silently did nothing and the board stopped accepting input. Both are the same defect and the second is the one a playtester reports as "it stopped working". It is not fixed by forbidding the sequence: picking a component up and clearing space for it is exactly what §44.4\'s mid-run re-pack is.' }),
+
+  a({ id: 'A-059', phase: 2, tier: 'unit', cadence: 'push', source: '§142.5, §112.4', status: 'implemented',
+      statement: 'A tick of heat resolves every overclock crossing against the field as it stood at the START of the tick, so two boards with identical layouts hold identical heat whatever order their components were placed in.',
+      why: '§142.5\'s step 16 is ordered — (a) accumulate generation, (b) recompute the regions, (c) resolve the crossings — and the implementation read the region field per placement, inside the accumulation loop, so each component\'s overclock state was judged against a field already carrying this tick\'s generation from every component earlier in the array. Measured on four Arcs in one region: the same layout built in a different order settles at 5.8649 against 5.8653. Small, and the size is not the point — placement order is not a property of an arrangement, §112.4 makes heat travel with the component precisely so that no sequence of edits changes what a layout is worth, and §14 would have made the order part of the golden hash the moment the board joins the world at steps 4, 5 and 16. It is also what took the pass from O(n) to O(n^2): the region field walks every placement and was being rebuilt once per placement per tick. §26 has said since pass 26 that "ordering IS the simulation\'s semantics"; this is a step whose own declared order was not the order it ran in.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

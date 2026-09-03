@@ -275,11 +275,22 @@ export const advance = (c: Clock, world: World, dtMs: number): number => {
     world.resumeGap = 1
     return 0
   }
-  if (world.paused || c.scale <= 0) return 0
+  // §9 — the run ends when integrity does, and no revives in v0.1. \`world.over\` was
+  // written by step 19 and read by NOTHING, so a dead run kept ticking: measured at
+  // -1,160 integrity and 479 kills after the death it had already recorded, with the
+  // host persisting that world to localStorage on the next visibility change. The
+  // gate is the right home for it, beside \`paused\` and the scale, because all three
+  // are the same question — is this world advancing — and §142.4 already answers it
+  // in one place rather than in each of ten steps. It is checked on the CALL and
+  // again in the catch-up loop, because a death can land mid-batch: at \`scale\` 50 a
+  // single call runs many ticks, and a gate that only guards the call let a dead
+  // world advance a further batch. A-011's x50-against-x1 symmetry check caught
+  // exactly that, which is the whole reason it is asserted rather than assumed.
+  if (world.paused || world.over || c.scale <= 0) return 0
   const interval = TICK_MS / c.scale
   c.accumulator += dtMs
   let ticks = 0
-  while (c.accumulator >= interval && ticks < MAX_CATCHUP_TICKS) {
+  while (c.accumulator >= interval && ticks < MAX_CATCHUP_TICKS && !world.over) {
     c.accumulator -= interval
     runTick(world)
     ticks++

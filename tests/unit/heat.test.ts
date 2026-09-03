@@ -14,7 +14,7 @@ import {
   applyDistribution, cellHeat, distribute, emitterGeneration, cooledGeneration,
   equilibrium, isRunaway, overclockedGeneration, overclockedRegionGeneration,
   regionField, regionFieldIncremental,
-  regionHeat, stateOf, window,
+  regionHeat, stateOf, tickHeat, window, isOverclocked,
 } from '../../src/grid/heat.ts'
 import {
   addHeat, createBoard, expand, key, mask, move, place, totalHeat, type Board,
@@ -424,5 +424,53 @@ describe('A-034 · §133.1 the region window is clipped, never normalised', () =
         expect(Math.max(...sizes)).toBeLessThanOrEqual(REGION_CELLS_MAX)
       }
     }
+  })
+})
+
+
+/**
+ * A-059 · §142.5, §112.4 - a tick of heat resolves against the START-OF-TICK field.
+ *
+ * §142.5's step 16 is ordered: (a) accumulate generation, (b) recompute the regions,
+ * (c) resolve the overclock crossings. Reading the region field per placement, inside
+ * the accumulation loop, interleaves (a) and (c) - so each component's overclock state
+ * is judged against a field already carrying this tick's generation from every
+ * placement earlier in the array, and PLACEMENT ORDER becomes a property of the
+ * arrangement. It is not one: §68 calls the board the product and a board is a set of
+ * cells, not a history of how they were filled. Measured before the fix, the same four
+ * Arcs settled at 5.8649 or 5.8653 depending only on the order they were placed in -
+ * small, invisible, and exactly §26's silent desync waiting for the board to join the
+ * world, where §14's golden hash would have made it permanent.
+ */
+describe('A-059 · §142.5 heat resolves against the start-of-tick field', () => {
+  const CLUSTER: readonly Cell[] = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }]
+  const built = (order: readonly Cell[]): Board => {
+    const b = createBoard('lattice')
+    for (const c of order) expect(place(b, 'arc', c, 0)).toBe(true)
+    return b
+  }
+  const run = (b: Board, ticks: number): void => {
+    for (let i = 0; i < ticks; i++) tickHeat(b, 1, 1 / 60)
+  }
+
+  it('holds identical heat whatever order the components were placed in', () => {
+    const forward = built(CLUSTER)
+    const reversed = built([...CLUSTER].reverse())
+    run(forward, 600)
+    run(reversed, 600)
+    // Bit-identical, not close: §14 hashes the world, so a difference of any size is
+    // a different run rather than a rounding artefact.
+    expect(totalHeat(reversed)).toBe(totalHeat(forward))
+    for (const c of CLUSTER) {
+      expect(regionHeat(reversed, c)).toBe(regionHeat(forward, c))
+    }
+  })
+
+  it('is not vacuous — the cluster does cross the line during those ticks', () => {
+    const b = built(CLUSTER)
+    run(b, 600)
+    // If nothing overclocks, every component takes the same branch and the test above
+    // passes for the wrong reason. The crossing is what the ordering bug rode on.
+    expect(b.placements.some((p) => isOverclocked(b, p))).toBe(true)
   })
 })

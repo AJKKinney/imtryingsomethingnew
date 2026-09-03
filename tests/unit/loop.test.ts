@@ -120,26 +120,35 @@ describe('A-012 · §142.4 the time-scale is a tick gate', () => {
       const w = world()
       const c = clock(scale)
       let ticks = 0
-      for (let frame = 0; frame < 600; frame++) ticks += advance(c, w, 1000 / 60)
+      // 480 frames, for the same reason the fingerprint test below uses 480 ticks:
+      // this world dies at 582 (A-056 measured it), and past that the gate stops
+      // counting because the run is over rather than because the scale said so.
+      for (let frame = 0; frame < 480; frame++) ticks += advance(c, w, 1000 / 60)
       return ticks
     }
-    expect(run(1)).toBe(600)
-    expect(run(0.2)).toBe(120)
-    expect(run(0.05)).toBe(30)
+    expect(run(1)).toBe(480)
+    expect(run(0.2)).toBe(96)
+    expect(run(0.05)).toBe(24)
     expect(run(0)).toBe(0)
   })
 
   it('runs the SAME ticks at every scale, so the world is identical after each', () => {
     // The whole claim of a gate: scale decides WHEN a tick happens and never what it
     // does. Same tick count, same world, bit for bit, at 100%, 20%, 5% and after a pause.
+    // Every loop here is bounded by `!w.over` as well as by the target, because
+    // §142.4's gate takes a DEAD world out of the schedule (A-056) — so an unbounded
+    // `while (w.tick < n)` over a world that dies at n-2 spins forever rather than
+    // failing. The guard turns that into a legible assertion instead of a hang, and
+    // every target below is one the world survives with margin.
     const upTo = (scale: number, target: number): World => {
       const w = world(4)
       const c = clock(scale)
       let guard = 0
-      while (w.tick < target && guard < 500_000) {
+      while (w.tick < target && !w.over && guard < 500_000) {
         advance(c, w, 1000 / 60)
         guard++
       }
+      expect(w.tick).toBe(target)
       return w
     }
     const full = fingerprint(upTo(1, 120))
@@ -149,12 +158,13 @@ describe('A-012 · §142.4 the time-scale is a tick gate', () => {
     // Paused mid-run, then resumed: the same 120 ticks, so the same world.
     const w = world(4)
     const c = clock(1)
-    while (w.tick < 60) advance(c, w, 1000 / 60)
+    while (w.tick < 60 && !w.over) advance(c, w, 1000 / 60)
     c.scale = 0
     for (let i = 0; i < 300; i++) advance(c, w, 1000 / 60)
     expect(w.tick).toBe(60)
     c.scale = 1
-    while (w.tick < 120) advance(c, w, 1000 / 60)
+    while (w.tick < 120 && !w.over) advance(c, w, 1000 / 60)
+    expect(w.tick).toBe(120)
     expect(fingerprint(w)).toBe(full)
   })
 
@@ -162,11 +172,18 @@ describe('A-012 · §142.4 the time-scale is a tick gate', () => {
     // §149.3 turns a 10:00 end-to-end screenshot from eleven minutes into twelve
     // seconds by running the same gate at x50. It is the same property in the other
     // direction, and if it were not bit-identical the whole saving would be a lie.
+    // 480 rather than 600, and the number is load-bearing: this world is a standing
+    // player inside a cloud of 64 Swarmers, and it dies at tick 598 (measured). At a
+    // 600-tick target the x50 side reached the gate's OTHER stop condition two ticks
+    // short and the comparison became a test of §9's death rather than of §142.4's
+    // symmetry. Eight seconds of game time proves the gate exactly as well.
     const fast = world(6)
     const c = clock(50)
-    while (fast.tick < 600) advance(c, fast, 1000 / 60)
+    let guard = 0
+    while (fast.tick < 480 && !fast.over && guard < 100_000) { advance(c, fast, 1000 / 60); guard++ }
+    expect(fast.tick).toBe(480)
     const slow = world(6)
-    for (let i = 0; i < 600; i++) runTick(slow)
+    for (let i = 0; i < 480; i++) runTick(slow)
     expect(fingerprint(fast)).toBe(fingerprint(slow))
   })
 

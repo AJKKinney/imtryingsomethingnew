@@ -152,7 +152,17 @@ export const apply = (p: Prototype, command: Command): void => {
     case 'cancel': p.carrying = -1; return
     case 'scrap': {
       const index = under(p)
-      if (index >= 0 && scrap(p.board, index).ok) p.decisions++
+      if (index < 0 || !scrap(p.board, index).ok) return
+      p.decisions++
+      // `carrying` is an index and `scrap` SPLICES, so every index above the hole
+      // shifts down by one. Left alone, picking up a component and then scrapping an
+      // earlier one moved a component the player never touched — measured: pick up
+      // the Orbiter, scrap the Arc, confirm, and the MINE teleports while the
+      // Orbiter stays put. Scrapping a LATER one instead left `carrying` past the
+      // end, where `move` fails silently and every subsequent confirm is a no-op:
+      // the board stops accepting input with nothing on screen to say why.
+      if (p.carrying === index) p.carrying = -1
+      else if (p.carrying > index) p.carrying -= 1
       return
     }
     case 'confirm': {

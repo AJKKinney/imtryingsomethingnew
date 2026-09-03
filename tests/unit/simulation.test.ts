@@ -13,6 +13,8 @@ import { createWorld, type World } from '../../src/core/world.ts'
 import { advance, clock, runTick } from '../../src/gen/loop.ts'
 import { nextFloat, rng } from '../../src/core/rng.ts'
 import { quantise } from '../../src/core/input.ts'
+import { PLAYER_INTEGRITY } from '../../src/data/player.ts'
+import { step as spawnStep } from '../../src/game/spawner.ts'
 import { digest, feed, hasher } from '../golden.ts'
 
 /**
@@ -189,5 +191,54 @@ describe('A-011 · §142.4 the time-scale is a tick gate, not a dt multiplier', 
     // §99.3's paused is the case that proves the choice: zero ticks is trivially
     // deterministic where a zero multiplier is a special case somebody has to write.
     expect(worldHash(world)).toBe(worldHash(createWorld(7)))
+  })
+})
+
+/**
+ * A-057 · §46.2, §30 — a spawned enemy is a NEW enemy.
+ *
+ * §17 pre-allocates and never grows, so `spawn` hands back a slot a dead enemy was
+ * using and sets only the id. Everything that makes it a new enemy is the spawner's
+ * job, and it set every field except the one added last — so §46.2's hit flash, a
+ * STAMP compared against `world.tick`, arrived on enemies that had never been hit.
+ */
+describe('A-057 · §30 the pool recycles, so the spawner initialises', () => {
+  it('never hands a new enemy the previous occupant\'s state', () => {
+    const w = createWorld(7)
+    // Dirty every slot the way a dead enemy leaves one: the pool never clears an
+    // item on despawn — it swaps and decrements — so this is the state a recycled
+    // slot genuinely holds, not a hypothetical.
+    for (const e of w.enemies.items) {
+      e.hurtAt = 999
+      e.vx = 123
+      e.vy = -456
+      e.flags = 0xff
+      e.hp = -1
+    }
+    // Step 7 alone, so the observation lands between the spawn and everything that
+    // legitimately writes to a live enemy — `enemyai` sets vx and vy two steps later,
+    // and checking after a whole tick would be checking the wrong thing.
+    w.spawnDebt = 40
+    spawnStep(w)
+    expect(w.enemies.count).toBeGreaterThan(20)
+
+    for (let i = 0; i < w.enemies.count; i++) {
+      const e = w.enemies.items[i]
+      if (e === undefined) throw new Error('missing')
+      // Every mutable field, not just the one that bit: the next field added is
+      // forgotten the same way, and this is the assertion that notices.
+      expect({ hurtAt: e.hurtAt, vx: e.vx, vy: e.vy, flags: e.flags })
+        .toEqual({ hurtAt: 0, vx: 0, vy: 0, flags: 0 })
+      expect(e.hp).toBeGreaterThan(0)
+    }
+  })
+
+  it('recycles the slot in a real run, which is what makes that load-bearing', () => {
+    // If the pool handed out a fresh object every time, the test above would pass
+    // for the wrong reason and stop protecting anything. Stepped directly with the
+    // player held alive, because A-056's gate correctly stops a dead run at 792.
+    const w = createWorld(7)
+    for (let i = 0; i < 1800; i++) { w.player.integrity = PLAYER_INTEGRITY; runTick(w) }
+    expect(w.enemies.nextId - 1).toBeGreaterThan(w.enemies.count)
   })
 })

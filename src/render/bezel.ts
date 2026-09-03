@@ -19,7 +19,11 @@ import { PLAY_HEIGHT, PLAY_WIDTH } from './camera.ts'
 import { BACKGROUND, HEAT_RAMP, PLAYER, SUBSTRATE } from '../gen/palette.ts'
 import { nextEncounter } from '../data/encounters.ts'
 import { PLAYER_INTEGRITY } from '../data/player.ts'
+import { LABELS } from '../data/strings.ts'
 import { minutes, type World } from '../core/world.ts'
+
+/** §102.6 — every player-visible string resolves from the label table, never a literal. */
+const hud = (id: string): string => LABELS.find((l) => l.id === id)?.text ?? id
 import type { Surface, SurfaceFactory } from './surface.ts'
 
 /** §83.2 measured it: the Deck's band is 80 px, which is why the board is 72x72. */
@@ -77,6 +81,17 @@ export const drawBezel = (target: Surface, atlas: Atlas, bezel: Bezel, world: Wo
   target.moveTo(8, top + 16)
   target.lineTo(8 + 180 * fraction, top + 16)
   target.stroke()
+
+  // §9 — the run ends when integrity does, and until this pass nothing said so: the
+  // simulation recorded `over` and the bezel went on printing a countdown to an
+  // encounter the player would never reach. A state and the affordance that leaves
+  // it, in the space the clock occupies, because that is the row already reserved
+  // for what the run is doing.
+  if (world.over) {
+    drawText(target, atlas, hud('runOver'), LABEL_SCALE, 240, top)
+    drawText(target, atlas, `${world.kills}`, LABEL_SCALE, 400, top)
+    return target.draws - before
+  }
 
   const t = minutes(world)
   const next = nextEncounter(t)
