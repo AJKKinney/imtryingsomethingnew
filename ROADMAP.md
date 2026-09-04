@@ -106,6 +106,27 @@ cadence and puts it on screen in **42%** of frames; the assertion states that ba
 the integer, because six was never wrong as a *value* — it was wrong against a cadence nobody
 had divided it by. Both are render constants, so §14's golden hash does not move.
 
+**7. And then the redesign's own fix became the thing §11 forbids — A-065.** The verbs were
+printed on the canvas because a tester could read the board and had no move, which was the
+right fix for that report and **the wrong object**: two permanent lines naming eight bindings
+is §11's *text wall* by name, read once and thereafter furniture, still there on run forty.
+It is now a **sequence** — one line, one verb, chosen by what is true at the cursor, retired
+for good the moment the player performs it, ending empty. Measured through the real
+prototype: **five lines across a whole workbench session, never two at once**, and two on the
+run tab, where movement and §95.2's dash — the game's only real-time verbs (§111.1) — had no
+surface at all. Every verb is an existing label and every key a keycap legend, so §102.2's
+prose budget does not move; the label budget does, by one, because `DASH` had no row.
+
+**§82.1's fourth criterion needs reading, not changing.** *They move something without being
+asked to* is the gate's sharpest question and the coach eventually **asks** — `ENTER MOVE` is
+the third lesson. So the criterion is read against the order rather than against the session:
+MOVE sits behind PLACE and HOLDING and is offered only on a cell that already holds something,
+which leaves a real window in which an unprompted move is an unprompted move. **What is
+recorded is whether the tester moved before that line appeared**, and the coach makes that
+answerable because it retires a lesson on use — a tester who never saw `ENTER MOVE` learned it
+themselves. That is a reading instruction rather than an instrument, and it is written down
+here so the next session does not score the criterion against a build that answers it.
+
 **Next: re-gate.** §82.1's four criteria, asked again, on this build: *tool or chore?* ≥ 3/5 ·
 every cell and rotation reachable on a gamepad · **the tester can predict a placement's
 consequence before making it** · and **they move something without being asked to**. §70.3's
