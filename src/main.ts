@@ -27,9 +27,33 @@ import { BACKGROUND } from './gen/palette.ts'
 import { BOARD_TILE } from './render/bezel.ts'
 import { drawBoard, frameOf, type BoardView } from './render/boardview.ts'
 import {
-  apply, createPrototype, drawPrototype, engagementOf, tick as tickBoard, type Command,
+  apply, createPrototype, drawPrototype, engagementOf, situationOf, tick as tickBoard,
+  type Command,
 } from './ui/prototype.ts'
+import {
+  createCoach, type Device, type Lesson, type Situation,
+} from './ui/coach.ts'
+import { drawText } from './render/atlas.ts'
+import { LABELS as STRINGS } from './data/strings.ts'
 import type { Surface } from './render/surface.ts'
+
+/** §102.6 — every player-visible string resolves from the label table, never a literal. */
+const labelOf = (id: string): string => STRINGS.find((l) => l.id === id)?.text ?? id
+
+/**
+ * The field has no cursor and no board, so its situation is a constant: what the coach
+ * is choosing between there is `walk` and `dash` and nothing else (§111.1).
+ */
+const FIELD: Situation = {
+  tab: 'run', carrying: false, onPlacement: false, placements: 0, rotatable: false,
+}
+
+/** What this browser has already been taught. A private window simply learns again. */
+const readTaught = (slot: string): readonly Lesson[] => {
+  try {
+    return (window.localStorage.getItem(slot) ?? '').split(' ').filter(Boolean) as Lesson[]
+  } catch { return [] }
+}
 
 declare const __MELTLINE_TARGET__: string
 
@@ -214,6 +238,7 @@ const boot = (): void => {
   // event and guard themselves the same way, on `e.repeat`.
   window.addEventListener('keydown', (e) => {
     const press = keys.down(e.code, e.repeat)
+    device = 'keyboard'
     sync()
     if (!press) return
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') world.live.dash = true
@@ -241,6 +266,22 @@ const boot = (): void => {
   // owed — heat tracks the war rather than the layout — and it costs a tab rather
   // than a second prototype.
   const proto = createPrototype()
+
+  // §11's onboarding. It is host state rather than world state: what a player has been
+  // taught is not part of §14's (seed, input log), and a replay that re-taught the
+  // lesson would be recording the tutor rather than the run.
+  //
+  // Restored across visits, because §47.3's finding about the cold open is the same
+  // one here — an opening that is right once is an obstacle on run forty, and the only
+  // honest way to keep it right is to stop showing it.
+  const TAUGHT = 'meltline.taught.v1'
+  const coach = createCoach(readTaught(TAUGHT))
+  const teach = (lesson: Lesson): void => {
+    if (coach.learned.has(lesson)) return
+    coach.learn(lesson)
+    try { window.localStorage.setItem(TAUGHT, [...coach.learned].join(' ')) } catch { /* private mode */ }
+  }
+  let device: Device = 'keyboard'
 
   // §85.3's two levels of detail. The bezel view is a STATUS LIGHT — fill, region
   // heat and trace width, at §83.2's measured 72x72 — and the `TAB` view is an
@@ -317,7 +358,7 @@ const boot = (): void => {
     }
     if (tab !== 'workbench') return
     const command = BOARD_KEYS[e.code]
-    if (command !== undefined) { e.preventDefault(); apply(proto, command) }
+    if (command !== undefined) { e.preventDefault(); board(command) }
   })
 
   /**
@@ -335,6 +376,31 @@ const boot = (): void => {
     [9, 'nextPart'],
   ]
   const wasPressed = new Set<number>()
+
+  /**
+   * The one place a board command is applied, so §11's sequence advances on the ACT
+   * rather than on the key: a pad and a keyboard teach the same lesson, and a verb
+   * used once is retired however it was reached.
+   *
+   * `confirm` is two verbs and which one it was is a property of the board BEFORE the
+   * command, not after — a confirm on an occupied cell picks a component up (§112.2)
+   * and the same key puts it down, so the situation is read first.
+   */
+  const board = (command: Command): void => {
+    const was = situationOf(proto)
+    apply(proto, command)
+    // A move is learned on the PUT DOWN and not on the pick-up: lifting a component is
+    // half a verb, and a player who lifts one and cancels has not moved anything. So a
+    // confirm on an occupied cell teaches nothing — it is the confirm AFTER it that does.
+    if (command === 'confirm') {
+      if (was.carrying) teach('move')
+      else if (!was.onPlacement) teach('place')
+    }
+    else if (command === 'rotate') teach('rotate')
+    else if (command === 'scrap') teach('scrap')
+    else if (command === 'nextPart' || command === 'prevPart') teach('holding')
+    else if (command === 'hotter' || command === 'cooler') teach('fight')
+  }
 
   /**
    * PRESENCE IS NOT PERMISSION, and this is the bug that made the first playable link
@@ -364,7 +430,8 @@ const boot = (): void => {
       const down = pad.buttons[button]?.pressed === true
       if (down && !wasPressed.has(button)) {
         wasPressed.add(button)
-        if (tab === 'workbench') apply(proto, command)
+        device = 'pad'
+        if (tab === 'workbench') board(command)
         else if (command === 'nextPart') showTab('workbench')
       } else if (!down) wasPressed.delete(button)
     }
@@ -379,7 +446,8 @@ const boot = (): void => {
     for (const [active, command, slot] of stick) {
       if (active && !wasPressed.has(slot)) {
         wasPressed.add(slot)
-        if (tab === 'workbench') apply(proto, command)
+        device = 'pad'
+        if (tab === 'workbench') board(command)
       } else if (!active) wasPressed.delete(slot)
     }
   }
@@ -410,10 +478,19 @@ const boot = (): void => {
         // and the player's position sets the crowd (§108.5: position is a thermostat).
         proto.engagement = engagementOf(world)
         tickBoard(proto, ran * DT)
+        // §111.1's two real-time verbs, learned by being used. A dash is read off
+        // `dashTicks` rather than off the key, so the lesson retires on the dash the
+        // player took and not on a press the cooldown swallowed (A-064).
+        if (world.player.vx !== 0 || world.player.vy !== 0) teach('walk')
+        if (world.player.dashTicks > 0) teach('dash')
       }
       renderFrame(stage, cam, world)
       drawBezel(stage, atlas, bezel, world)
       drawBoard(stage, proto.board, bezelBoard, frameOf(proto.board))
+      const line = coach.next(FIELD, device)
+      if (line !== undefined) {
+        drawText(stage, atlas, `${line.key} ${labelOf(line.verb)}`, LABEL_SCALE, 8, 12)
+      }
     } else {
       const interval = TICK_MS / BOARD_SCALE
       boardAccumulator += dt >= 1000 ? 0 : dt
@@ -424,7 +501,7 @@ const boot = (): void => {
         ran++
       }
       if (boardAccumulator >= interval) boardAccumulator = 0
-      drawPrototype(stage, atlas, proto, workbench)
+      drawPrototype(stage, atlas, proto, { ...workbench, coach, device })
     }
   }
 

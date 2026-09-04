@@ -44,6 +44,7 @@ import { LABELS } from '../data/strings.ts'
 import { LATE_TARGETS_HIT } from '../data/heat.ts'
 import { EMITTERS } from '../data/emitters.ts'
 import type { World } from '../core/world.ts'
+import { rotates, type Coach, type Device, type Situation } from './coach.ts'
 
 const text = (id: string): string => LABELS.find((l) => l.id === id)?.text ?? id
 
@@ -239,11 +240,30 @@ export const inspect = (p: Prototype, frame: BoardFrame): readonly string[] => {
   return lines
 }
 
+/**
+ * What the coach reads, derived from the prototype rather than tracked beside it —
+ * so the line it shows and the act a confirm performs are the same question asked
+ * once (§134.6, and A-062's own finding one surface over).
+ */
+export const situationOf = (p: Prototype): Situation => ({
+  tab: 'workbench',
+  carrying: p.carrying >= 0,
+  onPlacement: under(p) >= 0,
+  placements: p.board.placements.length,
+  rotatable: rotates((r) => {
+    const id = p.carrying >= 0 ? p.board.placements[p.carrying]?.id : TRAY[p.holding]
+    return id === undefined ? [] : rotate(shapeOf(id), r).map(([x, y]) => ({ x, y }))
+  }),
+})
+
 export interface PrototypeLayout {
   readonly view: BoardView
   readonly panelX: number
   readonly panelY: number
   readonly scale: Scale
+  /** Absent in a test that only wants the board drawn; the coach is host state. */
+  readonly coach?: Coach
+  readonly device?: Device
 }
 
 /**
@@ -369,14 +389,15 @@ export const drawPrototype = (
   const s = layout.scale
   let draws = drawBoard(surface, p.board, v, frame)
 
-  // ── the verbs, on screen rather than in a table below the page (§112.1) ──────
-  // The first gate found a player who could read the board and had NO MOVE. A cursor
-  // with no stated verb is a cursor that means nothing, and the controls were four
-  // hundred pixels below the canvas in prose nobody had reached yet.
-  draws += drawText(surface, atlas, 'ARROWS MOVE   ENTER PLACE   R ROTATE   BACKSPACE SCRAP',
-    s, v.x, 14)
-  draws += drawText(surface, atlas, `Q E ${text('holding')}   [ ] ${text('fight')}   TAB RUN`,
-    s, v.x, 28)
+  // ── the verb available HERE, and only until it has been used (§11, §69.6) ────
+  // The first gate found a player who could read the board and had NO MOVE, and the
+  // fix was eight bindings printed permanently — which is the reachability problem
+  // solved and §11's *no text walls* violated in the same line. `coach` is the
+  // sequence instead: one verb, chosen by what is true at the cursor, gone once used.
+  const line = layout.coach?.next(situationOf(p), layout.device ?? 'keyboard')
+  if (line !== undefined) {
+    draws += drawText(surface, atlas, `${line.key} ${text(line.verb)}`, s, v.x, 14)
+  }
 
   // ── the cursor, and the ghost of what a confirm would do ────────────────────
   // WHITE and thin, at the cell's own boundary, because the core is CYAN and heavy

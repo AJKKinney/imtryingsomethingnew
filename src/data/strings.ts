@@ -190,6 +190,11 @@ export const LABELS: readonly Label[] = Object.freeze([
   label('action', 'close', 'CLOSE'),
   label('action', 'prioritise', 'PRIORITISE'),
   label('action', 'claim', 'CLAIM'),
+  // §111.1 counts TWO real-time verbs and this is the second of them — §5.2D added it,
+  // §95.2 repriced it, §44.1 counts it among the game's real second-scale decisions,
+  // and §102.2's enumeration had no row for it. A verb the game cannot name is a verb
+  // the onboarding cannot teach (§11).
+  label('action', 'dash', 'DASH'),
   // ── settings (§101.4 — five groups, seventeen rows; the row IS the label)
   label('setting', 'renderProfile', 'RENDER PROFILE'),
   label('setting', 'frameCap', 'FRAME CAP'),
@@ -296,7 +301,7 @@ export const PROSE: readonly ProseSurface[] = Object.freeze([
 /** What is actually here, against §102.2's 131. The gap is the point (§145.6). */
 export const LABEL_COUNT: number = LABELS.length
 /**
- * 131 -> 144 after the first gate. §102.2 counted the labels a finished game shows and
+ * 131 -> 144 -> 145. §102.2 counted the labels a finished game shows and
  * had no row for a label that says what a CHANNEL means, because §85.4 audited that
  * every channel survives colour loss and no pass ever audited whether a first-time
  * viewer can decode one. Thirteen of these are the board's key.
@@ -304,8 +309,13 @@ export const LABEL_COUNT: number = LABELS.length
  * §145.6's law is why the number moved rather than the work being squeezed under it:
  * an addition is costed against the increment and the total is recomputed. A budget
  * that absorbs additions silently is a budget that stops meaning anything.
+ *
+ * 145 is §11's onboarding: the vent-dash is one of §111.1's two real-time verbs and
+ * §102.2's count had no row for it, so the one thing a player must be told on the field
+ * had no name to be told it in. One word, four locales, and §141.2 prices the whole UI
+ * at 889 — the budget exists to keep that number honest, not to keep a verb unnamed.
  */
-export const LABEL_BUDGET = 144
+export const LABEL_BUDGET = 145
 
 /** §102.2's ~640, after §134.3 cut the victory copy. */
 export const PROSE_WORDS: number = PROSE.reduce((n, p) => n + p.words, 0)

@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**106 decisions · 56 supersede an earlier one · 53%.**
+**108 decisions · 56 supersede an earlier one · 52%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -132,6 +132,8 @@ resume budget honest as this file grows.
 | a preview is of the act a confirm performs | board | commit 10 | — |
 | the heat ramp is anchored to the thresholds | render | commit 10 | — |
 | a held key is one press | ui | commit 10 | — |
+| the onboarding is a sequence, not a card | ui | commit 10 | — |
+| the vent-dash has a name | ui | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -506,7 +508,7 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
 
-### ui — 12
+### ui — 14
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -551,6 +553,14 @@ They were the same colour at the same weight, and the cursor opened ON the core'
 **a held key is one press** — commit 10
 
 §142.5's step 2 states the distinction — a dash is an EDGE the simulation consumes, a held key is a STATE it samples — and the host wrote both as a state, setting `world.live.dash = true` on every `keydown`. An OS auto-repeats about thirty times a second, so the bit was true again before every tick: no dash queued, because step 2 clears it, and one fired the instant the cooldown expired, for ever. Measured: holding Shift gives 12 dashes a minute, exactly the ceiling the 5 s cooldown permits, against 1 for a press — the strictly-optimal line §95.2 repriced the verb to remove, handed back by resting a finger. Two more consumers of the same event had it: the run-over restart rebuilt the world on every repeat, and §12's board bindings turned one held Enter into 31 of §121.4's decisions against a band of 8-15. A press is `!e.repeat` and nothing stricter, because a held-set test would make a key stuck by a missed keyup unpressable for ever — and the blur handler is the other half, since no keyup arrives for a key that was down when focus was lost.
+
+**the onboarding is a sequence, not a card** — commit 10
+
+§11 asks for tutorial-by-play with NO TEXT WALLS, §64.5 allows one prompt in twenty minutes and §9 forbids a modal — and the prototype printed eight bindings on two permanent lines, added at the first gate to fix reachability. One line, one verb, chosen by what is true at the cursor, retired the moment it is used, gone for good afterwards. It teaches on a consequence (§69.6) because MOVE is offered where the verb exists rather than in list order; it cannot nag, because a lesson is learned by DOING it, which is also what keeps §82.1's *moves something without being asked* measurable; and it costs no prose, because every verb is a §102.2 label and every key a keycap legend, which §64.5 and §141.4 both put outside prose. Host state rather than world state: what a player has been taught is not part of §14's (seed, input log), and it persists across visits because an opening that is right once is an obstacle on run forty (§47.3).
+
+**the vent-dash has a name** — commit 10
+
+§111.1 counts two real-time verbs and §102.2's 131-label enumeration had a row for neither the dash nor anything that could stand in for it — so the one thing a player must be told on the field could not be said. LABEL_BUDGET moves 144 to 145 under §145.6 rather than the work being squeezed under it: the budget exists to keep §141.2's 889-word translation cost honest, and one word across four locales is under a dollar. A verb the game cannot name is a verb the onboarding cannot teach.
 
 **a screen title is a label, its contents are prose** — commit 9
 

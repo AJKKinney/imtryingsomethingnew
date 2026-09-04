@@ -160,13 +160,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 29/30 implemented · 30 planned (seeded)
+phase 1: 30/31 implemented · 31 planned (seeded)
 phase 2: 23/34 implemented · 44 planned (34 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   52/64 implemented · 278 planned
+total:   53/65 implemented · 279 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -438,6 +438,44 @@ under the code containing it.
 
 **Each fix was verified by reverting it.** All four tests fail on the pre-fix source and pass
 on the fixed one, which is the only evidence that an assertion tests anything.
+
+**Then: "make sure the game has proper tutorialization."** §11 specifies ninety seconds of
+teaching-by-play with **no text walls**, and §64.5 permits **exactly one prompt** in the whole
+game — *"one prompt across a twenty-minute game is not what that warning is about."* What the
+build had was the opposite of both: **two permanent lines naming eight bindings**, printed
+above the workbench for ever, and **nothing at all on the run tab.**
+
+| | What was wrong | How it was measured |
+|---|---|---|
+| **A-065** | The workbench printed every binding it had, always — the text wall §11 forbids by name — and a wall is read once and then becomes furniture | **8 bindings on screen from the first frame to the last**, and the count never fell |
+| | The run tab taught nothing: movement and §95.2's dash, which are two of the game's eleven verbs and **both of its real-time ones** (§111.1), had no surface anywhere | **0 lines**, against a dash the tester has to discover by pressing an unlabelled key |
+| | §102.2's label budget was **144 of 144** with no row for `DASH`, so the one verb §5.2D calls the game's skill expression could not be *named* even if something had wanted to | the budget assertion fails on the 145th label until the ceiling moves with it |
+
+**The fix is a sequence rather than a card, which is the whole of §11's method.** `ui/coach.ts`
+holds an ordered list of lessons, shows **one line at a time**, and drops each the moment the
+player performs it. Driven through the real prototype rather than described:
+`ENTER PLACE` → `Q E HOLDING` → `ENTER MOVE` → `[ ] FIGHT` → `BACKSPACE SCRAP` → **nothing** —
+**five lines, never two at once, and the sequence ends empty.** On the run tab `WASD MOVE` →
+`SHIFT DASH` → nothing. `R ROTATE` is the sixth and appears only while the held part has a
+footprint rotation would change — **two of the eight tray parts**, so it waits for a shape it
+is true of rather than printing beside one it is not. **A returning player sees no line on the
+first frame**, because what has been learned is persisted; a pad player is told `A PLACE`
+rather than `ENTER PLACE`, from the same table.
+
+**Three properties are worth stating, because each was a defect the probe found and the tests
+did not.** A lesson is offered only when it is **available** — `MOVE` never appears on an empty
+cell, `SCRAP` never before there is something to scrap, `ROTATE` never for a shape whose
+rotations are identical, `FIGHT` never while a component is in the air. Carrying a component
+**suppresses every lesson but the one that puts it down**, so the coach cannot advise a verb
+the board will refuse. And `MOVE` is marked learned on the **put-down**, not the pick-up,
+because picking a component up is `PLACE`'s own input and would otherwise teach itself.
+
+**What this is not.** It is not a tutorial mode, not a modal, not a script; it adds no state
+the simulation can see and it never blocks an input. It is §69.6's one honest interaction —
+*the prompt fires on a placement that visibly has a consequence* — generalised from one beat
+to the six verbs the board actually has, and it obeys §69.2 exactly: **the line names a verb
+the player already possesses, and disappears the moment they possess it in the other sense.**
+
 
 ---
 

@@ -122,7 +122,13 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // wrote both as a state. Auto-repeat then dashed on cooldown for ever, restarted the
   // world thirty times a second on the death screen, and turned one held Enter into 31
   // of §121.4's board decisions. The pad path already read edges and said why.
-  1: 30, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // Phase 1 was 30 and is 31: A-065 is §11's onboarding, which had never been built.
+  // The prototype taught by printing eight bindings permanently — the text wall §11
+  // names by name — so the sequence replaces it: one verb, chosen by the cursor,
+  // retired on use, silent afterwards. It is one row rather than folded into A-051's
+  // inspect panel because that reads a cell and this reads a PLAYER.
+  1: 31, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -344,6 +350,10 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-064', phase: 1, tier: 'unit', cadence: 'push', source: '§95.2, §142.5', status: 'implemented',
       statement: 'A held key is one press. The host reports a dash edge, a state change and a board command once per physical press and never on an auto-repeat, while a movement axis stays held for as long as the key is — and a blur releases everything, since no keyup arrives for it.',
       why: '§142.5\'s step 2 is explicit that a dash is an EDGE the simulation consumes and a held key is a STATE it samples, and the host wrote both the same way: `world.live.dash = true` on every `keydown`. An OS auto-repeats a held key about thirty times a second, so the bit was true again before every tick — no dash was ever queued, because step 2 clears it, and instead one fired the instant the cooldown expired, for ever. Measured against the real loop: holding Shift produces **12 dashes in 60 seconds, which is exactly the ceiling the 5 s cooldown permits**, against **1** for a press. That is the strictly-optimal line §95.2 repriced the verb from 3 s to 5 s specifically to remove, handed back for free by resting a finger — and §44.1 counts *"dash to escape, or dash to vent heat?"* among the game\'s real second-scale decisions, which a dash that fires on its own does not contain. The same event has two more consumers and both had it: the run-over restart rebuilt the world thirty times a second while any key was held on the death screen, and §12\'s board bindings turned **one press of Enter held for a second into 31 counted decisions** against §121.4\'s band of 8-15 a run — the number §9\'s gate is scored on. The pad path ten lines below the board bindings already reads edges and says why in as many words; the keyboard beside it did not. The blur clause is the same rule\'s other side: a browser delivers no keyup for a key that was down when focus was lost, so §9\'s auto-pause returns the player to a walk nobody is pressing.' }),
+
+  a({ id: 'A-065', phase: 1, tier: 'unit', cadence: 'push', source: '§11, §69.6', status: 'implemented',
+      statement: 'The onboarding is a sequence, not a card: one line naming one verb, chosen by what is true at the cursor, retired the moment the player uses it, and gone for good once they have — on a pad as on a keyboard, and silent from the first frame for a browser that has already been taught.',
+      why: '§11 asks for "90 seconds of tutorial-by-play with **no text walls**", §64.5 allows the game ONE prompt in twenty minutes and §9 forbids a mandatory modal — and the prototype had a wall: eight bindings on two permanent lines, added at the first gate because a tester "could read the board and had NO MOVE". That fixed reachability and left the teaching unbuilt. A list shown at the moment of least context, never changing, is read once or never; nothing in it is attached to a consequence; and it is still there on run forty, which is §47.3\'s finding about the cold open at a smaller scale. The three properties that make a sequence different are each a rule this document already wrote. It teaches ON A CONSEQUENCE — §69.6\'s design is a placement that visibly has one, and here the trigger is read from the cursor rather than scripted, so MOVE is offered on the cell that holds something and §85.2\'s trace has already drawn whether it is fed. It CANNOT NAG, because a lesson is learned by doing it: the line a player ignores is the line they see again and the one they act on is gone — which is the only arrangement that leaves §82.1\'s fourth gate criterion (*a tester moves something without being asked*) measurable, and it is why MOVE is not hurried to the front of the queue. And it COSTS NO PROSE: every verb is one of §102.2\'s labels and every key a keycap legend, which §64.5 and §141.4 both put outside prose, so it localises with the string table and adds nothing to §23 task 17. The one label it needed did not exist — the vent-dash is one of §111.1\'s two real-time verbs and §102.2\'s enumeration had no row for it, so the single thing a player must be told on the field had no name to be told it in.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>
