@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**105 decisions · 56 supersede an earlier one · 53%.**
+**106 decisions · 56 supersede an earlier one · 53%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -131,6 +131,7 @@ resume budget honest as this file grows.
 | the settled figure is an equilibrium of generation | ui | commit 10 | — |
 | a preview is of the act a confirm performs | board | commit 10 | — |
 | the heat ramp is anchored to the thresholds | render | commit 10 | — |
+| a held key is one press | ui | commit 10 | — |
 | document sources are not partitions | build | commit 9 | — |
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
@@ -505,7 +506,7 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
 
-### ui — 11
+### ui — 12
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -546,6 +547,10 @@ They were the same colour at the same weight, and the cursor opened ON the core'
 **the settled figure is an equilibrium of generation** — commit 10
 
 `equilibrium` takes a GENERATION and returns `generation x 1.5`; the inspect panel handed it a HEAT, so the one number a placement decision turns on printed as `heat x 1.5` — a quantity that is neither. It type-checked because both are numbers and it read plausibly because it moved when heat moved, which is why watching the panel could not catch it. Measured: a four-Arc region settling at 23.78 announced 35.67, and two Arcs settled at 8.9 against an overclock line of 10 read 13.4 — a stably safe region announced as past the threshold, in the panel §69.3 exists to make that legible with. §134.6's rule generalised: a surface declares the quantity it renders, and a unit is part of the quantity.
+
+**a held key is one press** — commit 10
+
+§142.5's step 2 states the distinction — a dash is an EDGE the simulation consumes, a held key is a STATE it samples — and the host wrote both as a state, setting `world.live.dash = true` on every `keydown`. An OS auto-repeats about thirty times a second, so the bit was true again before every tick: no dash queued, because step 2 clears it, and one fired the instant the cooldown expired, for ever. Measured: holding Shift gives 12 dashes a minute, exactly the ceiling the 5 s cooldown permits, against 1 for a press — the strictly-optimal line §95.2 repriced the verb to remove, handed back by resting a finger. Two more consumers of the same event had it: the run-over restart rebuilt the world on every repeat, and §12's board bindings turned one held Enter into 31 of §121.4's decisions against a band of 8-15. A press is `!e.repeat` and nothing stricter, because a held-set test would make a key stuck by a missed keyup unpressable for ever — and the blur handler is the other half, since no keyup arrives for a key that was down when focus was lost.
 
 **a screen title is a label, its contents are prose** — commit 9
 

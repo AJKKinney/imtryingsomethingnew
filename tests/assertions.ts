@@ -116,7 +116,13 @@ export const PLANNED: Readonly<Record<Phase, number>> = Object.freeze({
   // HOLDING panel and the AFTER line all described an act the game would not perform.
   // A-063: the heat ramp was linear in `heat / meltdown` against thresholds §58.5
   // made geometry-relative, so a whole band drew overclocked and simulated safe.
-  1: 29, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
+  //
+  // Phase 1 was 29 and is 30: A-064 is the fifth of that pass and the same shape once
+  // more — §142.5 states that a dash is an edge and a held key is a state, and the host
+  // wrote both as a state. Auto-repeat then dashed on cooldown for ever, restarted the
+  // world thirty times a second on the death screen, and turned one held Enter into 31
+  // of §121.4's board decisions. The pad path already read edges and said why.
+  1: 30, 2: 44, 3: 148, 4: 26, 5: 18, 6: 12,
 })
 
 const a = (x: Assertion): Assertion => Object.freeze(x)
@@ -334,6 +340,10 @@ export const ASSERTIONS: readonly Assertion[] = Object.freeze([
   a({ id: 'A-063', phase: 2, tier: 'unit', cadence: 'push', source: '§134.2, §58.5', status: 'implemented',
       statement: 'The heat ramp is anchored to the board\'s own threshold pair rather than interpolated across its span: on every one of the six board states the game can be in, a cell is drawn at or above the overclock tint exactly when the simulation calls it overclocked, and reaches the last band exactly at meltdown.',
       why: 'A ramp linear in `heat / meltdown` puts a fixed FRACTION of the span at each band, and the thresholds are not at fixed fractions — §58.5 made every pair geometry-relative (10/22, 7/19, 7/17, and 7/19 once Ring expands) precisely so a rung means the same thing on cores whose regions differ in size. Measured on Lattice: the amber began at 8.81 against an overclock line of 10, so the whole 8.81-10 band was painted overclocked while the simulation called it safe — a false threshold-crossing, all run, on the surface §68 calls the product, and §2\'s cheated pointing the other way from the usual one. A-050 asserts WHICH QUANTITY the fill carries and this asserts WHAT THE COLOUR MEANS; the second is what was broken, and A-050\'s own exact-set check passed because it sampled a single board whose regions never landed in the gap. §133.6\'s rule is why the test sweeps: a mapping is guarded by an asymmetry over the whole range, never by a value at a point.' }),
+
+  a({ id: 'A-064', phase: 1, tier: 'unit', cadence: 'push', source: '§95.2, §142.5', status: 'implemented',
+      statement: 'A held key is one press. The host reports a dash edge, a state change and a board command once per physical press and never on an auto-repeat, while a movement axis stays held for as long as the key is — and a blur releases everything, since no keyup arrives for it.',
+      why: '§142.5\'s step 2 is explicit that a dash is an EDGE the simulation consumes and a held key is a STATE it samples, and the host wrote both the same way: `world.live.dash = true` on every `keydown`. An OS auto-repeats a held key about thirty times a second, so the bit was true again before every tick — no dash was ever queued, because step 2 clears it, and instead one fired the instant the cooldown expired, for ever. Measured against the real loop: holding Shift produces **12 dashes in 60 seconds, which is exactly the ceiling the 5 s cooldown permits**, against **1** for a press. That is the strictly-optimal line §95.2 repriced the verb from 3 s to 5 s specifically to remove, handed back for free by resting a finger — and §44.1 counts *"dash to escape, or dash to vent heat?"* among the game\'s real second-scale decisions, which a dash that fires on its own does not contain. The same event has two more consumers and both had it: the run-over restart rebuilt the world thirty times a second while any key was held on the death screen, and §12\'s board bindings turned **one press of Enter held for a second into 31 counted decisions** against §121.4\'s band of 8-15 a run — the number §9\'s gate is scored on. The pad path ten lines below the board bindings already reads edges and says why in as many words; the keyboard beside it did not. The blur clause is the same rule\'s other side: a browser delivers no keyup for a key that was down when focus was lost, so §9\'s auto-pause returns the player to a walk nobody is pressing.' }),
 ])
 
 export const byPhase = (phase: Phase): readonly Assertion[] =>

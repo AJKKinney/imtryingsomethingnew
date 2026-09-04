@@ -50,6 +50,55 @@ const LABELS = ['INTEGRITY', 'NEXT', 'KILLS'] as const
 const RAF_GRACE_MS = 1000
 
 /**
+ * The keyboard, as an EDGE detector rather than a state — which is what §142.5's step
+ * 2 already assumes and what the host was not delivering.
+ *
+ * A held key auto-repeats: the OS re-fires `keydown` about thirty times a second after
+ * a half-second delay, and the host wrote `world.live.dash = true` on every one of
+ * them. §142.5's step 2 consumes the bit and clears it, so no dash was ever queued —
+ * but the bit was true again before the next tick, so the instant §95.2's cooldown
+ * expired a dash fired on its own. **Holding Shift dashed on cooldown, for ever**,
+ * which is precisely the behaviour §95.2 repriced the verb from 3 s to 5 s to remove:
+ * that pass measured dash-on-cooldown as strictly optimal and made it a decision, and
+ * a key held down handed the optimal line back for free. The same event drives §9's
+ * leave-the-pause and the run-over restart, so auto-repeat also rebuilt the world
+ * thirty times a second while any key was held on the death screen.
+ *
+ * `clear` is not tidiness. A browser does not deliver `keyup` for keys that were down
+ * when the window lost focus, so without it an alt-tab mid-run leaves the player
+ * walking in a direction nobody is pressing — and, since a key already down is not a
+ * press, leaves the dash dead until that key is tapped again. §9 auto-pauses on
+ * visibility loss and §3 makes the lid-close the primary venue's normal case, so this
+ * is the ordinary path rather than the edge.
+ */
+export interface Keyboard {
+  /** Records the key as held, and reports whether this event was a PRESS. */
+  readonly down: (code: string, repeat: boolean) => boolean
+  readonly up: (code: string) => void
+  /** Every key released at once — what a blur is, since no keyup arrives for it. */
+  readonly clear: () => void
+  readonly axis: (neg: string, pos: string) => number
+}
+
+export const keyboard = (): Keyboard => {
+  const held = new Set<string>()
+  return {
+    // A press is `!repeat` and nothing else. Asking the held set instead would be a
+    // second, stricter definition — and a stricter one is worse here, because a key
+    // that is stuck in the set (a keyup a blur never delivered) would then be a key
+    // that can never be pressed again. `repeat` is a property of the EVENT, so every
+    // listener that reads it agrees without depending on the order they were added in.
+    down: (code, repeat) => {
+      held.add(code)
+      return !repeat
+    },
+    up: (code) => { held.delete(code) },
+    clear: () => { held.clear() },
+    axis: (neg, pos) => (held.has(pos) ? 1 : 0) - (held.has(neg) ? 1 : 0),
+  }
+}
+
+/**
  * PRESENCE IS NOT PERMISSION, and this is the bug that made the first playable link a
  * black rectangle. `navigator.getGamepads` exists on every modern browser, so a `typeof`
  * check passes — and inside a frame whose permissions policy withholds the `gamepad`
@@ -153,20 +202,29 @@ const boot = (): void => {
   }
 
   // The host writes intent; step 2 records it. A key held down is a state the
-  // simulation samples, and a dash is an EDGE the simulation consumes (§142.5).
-  const held = new Set<string>()
-  const axis = (neg: string, pos: string): number =>
-    (held.has(pos) ? 1 : 0) - (held.has(neg) ? 1 : 0)
+  // simulation samples, and a dash is an EDGE the simulation consumes (§142.5) — so
+  // the host has to tell the two apart, which is what `keyboard` is for.
+  const keys = keyboard()
   const sync = (): void => {
-    world.live.moveX = axis('KeyA', 'KeyD') + axis('ArrowLeft', 'ArrowRight')
-    world.live.moveY = axis('KeyW', 'KeyS') + axis('ArrowUp', 'ArrowDown')
+    world.live.moveX = keys.axis('KeyA', 'KeyD') + keys.axis('ArrowLeft', 'ArrowRight')
+    world.live.moveY = keys.axis('KeyW', 'KeyS') + keys.axis('ArrowUp', 'ArrowDown')
   }
+  // One listener for the two things a press does to a RUN — the dash edge, and leaving
+  // whatever state the run is in. §12's board bindings are a third consumer of the same
+  // event and guard themselves the same way, on `e.repeat`.
   window.addEventListener('keydown', (e) => {
-    held.add(e.code)
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') world.live.dash = true
+    const press = keys.down(e.code, e.repeat)
     sync()
+    if (!press) return
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') world.live.dash = true
+    // Any press leaves §9's auto-pause. The accumulator is already empty, so nothing
+    // catches up — §3.B: fast-forwarding through a lid-close is a death nobody saw.
+    if (world.over) { restart(); return }
+    if (world.paused) resume(c, world)
   })
-  window.addEventListener('keyup', (e) => { held.delete(e.code); sync() })
+  window.addEventListener('keyup', (e) => { keys.up(e.code); sync() })
+  // A blur delivers no keyup for whatever was down, so the keys are released here.
+  window.addEventListener('blur', () => { keys.clear(); sync() })
   // §9 — handhelds get their lids closed constantly. The clamp is in `advance`;
   // this is what stops the accumulator being handed a minute of wall clock.
   document.addEventListener('visibilitychange', () => {
@@ -176,12 +234,6 @@ const boot = (): void => {
     }
   })
   window.addEventListener('pagehide', save)
-  // Any input leaves §9's auto-pause. The accumulator is already empty, so nothing
-  // catches up — §3.B: fast-forwarding through a lid-close is a death nobody saw.
-  window.addEventListener('keydown', () => {
-    if (world.over) { restart(); return }
-    if (world.paused) resume(c, world)
-  })
 
   // §82.2 — ONE board, two tabs. The RUN tab and the WORKBENCH tab share this
   // object, so the difference between them is not the machine but WHAT DRIVES ITS
@@ -248,6 +300,13 @@ const boot = (): void => {
     BracketRight: 'hotter', BracketLeft: 'cooler',
   }
   window.addEventListener('keydown', (e) => {
+    // §101.3's grid-cursor idiom is shared with the pad, and the pad below already
+    // reads EDGES — *"a held stick is one move, not sixty. A repeat would make
+    // §121.4's decision count a function of how long a thumb rested."* The keyboard
+    // had exactly that defect ten lines above the sentence describing it: holding
+    // Enter placed, picked up and re-placed thirty times a second, and every one of
+    // those counted toward the number §9's gate is scored on.
+    if (e.repeat) return
     if (e.code === 'Tab') {
       // §9 — `TAB` opens the board, at 20% time, never paused. Here it is the tab it
       // will become, so the binding a playtester learns at the gate is the one that

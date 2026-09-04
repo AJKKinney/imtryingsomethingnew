@@ -160,13 +160,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 28/29 implemented · 29 planned (seeded)
+phase 1: 29/30 implemented · 30 planned (seeded)
 phase 2: 23/34 implemented · 44 planned (34 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   51/63 implemented · 277 planned
+total:   52/64 implemented · 278 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -418,6 +418,23 @@ A-050 asks **which quantity** the fill carries and A-063 asks **what the colour 
 it sweeps all six board states rather than testing a point. §133.6 wrote the rule two passes
 before the defect existed — *a mapping is guarded by an asymmetry over the whole range, never
 by a value at a point* — and this is the first time it has been paid.
+
+**And a fifth, asked for after the other four.** §142.5's step 2 states the distinction in
+its own comment — *a dash is an EDGE the simulation consumes, a held key is a STATE it
+samples* — and the host wrote both as a state, setting the dash bit on every `keydown`. An
+OS auto-repeats a held key about thirty times a second.
+
+| | What was wrong | How it was measured |
+|---|---|---|
+| **A-064** | Holding Shift re-set the dash bit before every tick, so a dash fired the instant §95.2's cooldown expired — for ever | **12 dashes a minute, exactly the ceiling the 5 s cooldown permits**, against **1** for a press |
+| | The same event restarts a finished run, so any key held on the death screen rebuilt the world on every repeat | the run never got past its first frame while a key was down |
+| | …and §12's board bindings apply a command per repeat | **one press of Enter held for a second is 31 counted decisions**, against §121.4's band of **8–15 a run** |
+
+**The last row is the one worth keeping.** §121.4's decision count is the number §9's gate is
+scored on, and the pad path — ten lines below the board bindings — already reads edges and
+says exactly why: *"a repeat would make §121.4's decision count a function of how long a
+thumb rested."* The keyboard beside it did not, so the sentence describing the defect sat
+under the code containing it.
 
 **Each fix was verified by reverting it.** All four tests fail on the pre-fix source and pass
 on the fixed one, which is the only evidence that an assertion tests anything.
