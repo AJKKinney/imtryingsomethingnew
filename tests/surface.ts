@@ -18,38 +18,57 @@ export interface StubSurface extends Surface {
   /** Every filled PATH, as the colour it was filled with — §46.2's firing signature
    *  is a filled wedge, and "it was filled" is the half a draw count cannot see. */
   readonly filled: string[]
+  /**
+   * The segments of each STROKED path, separately, and the colour it was stroked in.
+   *
+   * `segments` is every segment the frame issued, flattened — which was enough while
+   * the board stroked exactly one path (§A-053's core) and stopped being enough the
+   * moment §85.2's substrate became an outline. A test that wants to say *the core is
+   * symmetric about its own cell* cannot say it over a pile that also contains
+   * twenty-five cells' worth of dashes. The picture got richer, so the instrument
+   * reading it has to (§92.2 — the answer is a finer instrument, never a looser band).
+   */
+  readonly strokes: { readonly colour: string; readonly segments: number[] }[]
 }
 
 export const stubSurface = (width: number, height: number): StubSurface => {
   let fill = ''
+  let stroke = ''
+  let pending: number[] = []
   const s: StubSurface = {
     width,
     height,
     segments: [],
+    strokes: [],
     fills: [],
     filled: [],
     paths: 0,
     draws: 0,
     clear() {
       s.segments.length = 0
+      s.strokes.length = 0
       s.fills.length = 0
       s.filled.length = 0
       s.paths = 0
     },
     beginPath() {
       s.paths++
+      pending = []
     },
     moveTo(x, y) {
       s.segments.push(x, y)
+      pending.push(x, y)
     },
     lineTo(x, y) {
       s.segments.push(x, y)
+      pending.push(x, y)
     },
     stroke() {
+      s.strokes.push({ colour: stroke, segments: [...pending] })
       s.draws++
     },
-    setStroke() {
-      /* colour and width do not change the count */
+    setStroke(colour) {
+      stroke = colour
     },
     setFill(colour) {
       fill = colour

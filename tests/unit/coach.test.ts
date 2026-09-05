@@ -5,7 +5,13 @@
 import { describe, expect, it } from 'vitest'
 import { createCoach, rotates, type Lesson, type Situation } from '../../src/ui/coach.ts'
 import { TRAY, apply, createPrototype, situationOf, type Command } from '../../src/ui/prototype.ts'
-import { place, rotate, shapeOf } from '../../src/grid/board.ts'
+import { COACH_SCALE, CURSOR, drawPrototype } from '../../src/ui/prototype.ts'
+import { createBoard, place, rotate, shapeOf } from '../../src/grid/board.ts'
+import { drawBoard, frameOf, type BoardView } from '../../src/render/boardview.ts'
+import { buildAtlas, LABEL_SCALE } from '../../src/render/atlas.ts'
+import { GLYPH_ROWS } from '../../src/render/face.ts'
+import { SUBSTRATE } from '../../src/gen/palette.ts'
+import { stubSurface } from '../surface.ts'
 import { LABELS } from '../../src/data/strings.ts'
 
 const BOARD: Situation = {
@@ -184,5 +190,89 @@ describe('A-065 · §11 the onboarding is a sequence, not a card', () => {
     // And it stays gone wherever the cursor goes next.
     board('up'); board('left')
     expect(line()).toBeUndefined()
+  })
+})
+
+/**
+ * §85.2's shape and §117.5's perceptibility, which are the same defect twice: a
+ * quantity drawn correctly and drawn so that nobody reads it.
+ */
+describe('A-066 · §85.2 the picture says what the spec says, at the detail it is read at', () => {
+  const VIEW: BoardView = { x: 0, y: 0, cell: 40, detail: 'full' }
+  const TILE: BoardView = { x: 0, y: 0, cell: 14.4, detail: 'bezel' }
+
+  it('draws an empty cell as an outline in the instrument and a point in the status light', () => {
+    const board = createBoard('lattice')
+
+    const full = stubSurface(400, 400)
+    drawBoard(full, board, VIEW, frameOf(board))
+    const substrate = full.strokes.filter((k) => k.colour === SUBSTRATE)
+    // ONE path for the whole substrate, and it spans the board rather than a point.
+    expect(substrate).toHaveLength(1)
+    const seg = substrate[0]?.segments ?? []
+    const xs = seg.filter((_, i) => i % 2 === 0)
+    const ys = seg.filter((_, i) => i % 2 === 1)
+    // An OUTLINE, not a dot: the marks on one cell reach across most of that cell in
+    // both axes. A centred point would put every mark within a fraction of it, which
+    // is exactly what the old drawing did and what no check could see.
+    const cellXs = xs.filter((x) => x < VIEW.cell)
+    expect(Math.max(...cellXs) - Math.min(...cellXs)).toBeGreaterThan(VIEW.cell * 0.7)
+    // …and it covers the whole board, so §108.3's geometry is what is drawn.
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(VIEW.cell * 4)
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(VIEW.cell * 4)
+
+    // The status light keeps the dot §86.2 measured, and keeps it as a FILL.
+    const tile = stubSurface(120, 120)
+    drawBoard(tile, board, TILE, frameOf(board))
+    expect(tile.strokes.filter((k) => k.colour === SUBSTRATE)).toHaveLength(0)
+    const dots = []
+    for (let i = 0; i + 4 < tile.fills.length; i += 5) {
+      if (String(tile.fills[i + 4]) === SUBSTRATE) dots.push(Number(tile.fills[i + 2]))
+    }
+    expect(dots).toHaveLength(25)
+    for (const d of dots) expect(d).toBeLessThan(TILE.cell * 0.4)
+  })
+
+  it('costs fewer draws than the dot it replaces, and strictly more geometry', () => {
+    const board = createBoard('lattice')
+    const full = stubSurface(400, 400)
+    const draws = drawBoard(full, board, VIEW, frameOf(board))
+    const tile = stubSurface(120, 120)
+    const tileDraws = drawBoard(tile, board, TILE, frameOf(board))
+
+    // 25 fillRects became 1 stroked path, so the INSTRUMENT is cheaper than the
+    // STATUS LIGHT while drawing more — which is why §85.3's claim is stated in
+    // geometry rather than in draws (§92.2: a finer instrument, never a looser band).
+    expect(draws).toBeLessThan(tileDraws)
+    expect(full.segments.length).toBeGreaterThan(tile.segments.length)
+  })
+
+  it('draws the instruction larger than every label that reports', () => {
+    // §117.5's perceptibility half, as an ASYMMETRY rather than an integer (§133.6):
+    // whatever the label scale becomes, the one line that tells the player to act is
+    // bigger than the lines that tell them what is true. At equal scale it read as a
+    // seventh status field, which is a channel that is present and is not a channel.
+    expect(COACH_SCALE).toBeGreaterThan(LABEL_SCALE)
+
+    const p = createPrototype()
+    const coach = createCoach()
+    const atlas = buildAtlas((w, h) => stubSurface(w, h), ['MELTLINE'])
+    const layout = {
+      view: { x: 40, y: 56, cell: 52, detail: 'full' } as BoardView,
+      panelX: 320, panelY: 118, scale: LABEL_SCALE,
+    }
+    const quiet = stubSurface(640, 360)
+    const loud = stubSurface(640, 360)
+    drawPrototype(quiet, atlas, p, layout)
+    drawPrototype(loud, atlas, p, { ...layout, coach, device: 'keyboard' })
+
+    // The line is on screen, and it brings a marker with it — a filled bar in the
+    // cursor's own white, because a single-colour atlas has no other emphasis.
+    expect(loud.draws).toBeGreaterThan(quiet.draws)
+    const bars = []
+    for (let i = 0; i + 4 < loud.fills.length; i += 5) {
+      if (String(loud.fills[i + 4]) === CURSOR) bars.push(Number(loud.fills[i + 3]))
+    }
+    expect(bars.some((h) => h >= GLYPH_ROWS * COACH_SCALE)).toBe(true)
   })
 })

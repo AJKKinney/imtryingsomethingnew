@@ -27,13 +27,14 @@ import { BACKGROUND } from './gen/palette.ts'
 import { BOARD_TILE } from './render/bezel.ts'
 import { drawBoard, frameOf, type BoardView } from './render/boardview.ts'
 import {
-  apply, createPrototype, drawPrototype, engagementOf, situationOf, tick as tickBoard,
-  type Command,
+  apply, COACH_SCALE, createPrototype, CURSOR, drawPrototype, engagementOf, situationOf,
+  tick as tickBoard, type Command,
 } from './ui/prototype.ts'
 import {
   createCoach, type Device, type Lesson, type Situation,
 } from './ui/coach.ts'
 import { drawText } from './render/atlas.ts'
+import { GLYPH_ROWS } from './render/face.ts'
 import { LABELS as STRINGS } from './data/strings.ts'
 import type { Surface } from './render/surface.ts'
 
@@ -487,9 +488,13 @@ const boot = (): void => {
       renderFrame(stage, cam, world)
       drawBezel(stage, atlas, bezel, world)
       drawBoard(stage, proto.board, bezelBoard, frameOf(proto.board))
+      // Same treatment as the workbench's (§A-066): twice the label scale and a white
+      // marker, because a correct line nobody sees is a line that is not there.
       const line = coach.next(FIELD, device)
       if (line !== undefined) {
-        drawText(stage, atlas, `${line.key} ${labelOf(line.verb)}`, LABEL_SCALE, 8, 12)
+        stage.setFill(CURSOR)
+        stage.fillRect(8, 12, 5, GLYPH_ROWS * COACH_SCALE)
+        drawText(stage, atlas, `${line.key} ${labelOf(line.verb)}`, COACH_SCALE, 21, 12)
       }
     } else {
       const interval = TICK_MS / BOARD_SCALE

@@ -139,14 +139,29 @@ describe('A-050 · §134.2 the cell fill renders the DERIVED region heat', () =>
   it('draws an empty cell as substrate and never as a heat tint', () => {
     const board = createBoard('lattice')
     expect(place(board, 'arc', { x: 1, y: 1 }, 0)).toBe(true)
-    const surface = stubSurface(400, 400)
-    drawBoard(surface, board, VIEW, frameOf(board))
+
+    // At the bezel's detail an empty cell is a DOT, and every dot is substrate.
+    const bezel = stubSurface(120, 120)
+    drawBoard(bezel, board, BEZEL, frameOf(board))
     const dots = []
-    for (let i = 0; i + 4 < surface.fills.length; i += 5) {
-      if (Number(surface.fills[i + 2]) <= 4) dots.push(String(surface.fills[i + 4]))
+    for (let i = 0; i + 4 < bezel.fills.length; i += 5) {
+      if (Number(bezel.fills[i + 2]) <= 4) dots.push(String(bezel.fills[i + 4]))
     }
     expect(dots.length).toBeGreaterThan(20)
     expect(new Set(dots)).toEqual(new Set([SUBSTRATE]))
+
+    // At the instrument's it is §85.2's dotted OUTLINE — one path, in substrate, and
+    // the cell fills that remain are ALL of them heat tints on occupied cells. The
+    // claim is unchanged and the picture is not: an empty cell never carries the
+    // channel that means heat, whichever way it is drawn.
+    const full = stubSurface(400, 400)
+    drawBoard(full, board, VIEW, frameOf(board))
+    const substrate = full.strokes.filter((k) => k.colour === SUBSTRATE)
+    expect(substrate).toHaveLength(1)
+    expect(substrate[0]?.segments.length ?? 0).toBeGreaterThan(24 * 4)
+    const fills = []
+    for (let i = 0; i + 4 < full.fills.length; i += 5) fills.push(String(full.fills[i + 4]))
+    expect(fills).not.toContain(SUBSTRATE)
   })
 })
 
@@ -197,7 +212,13 @@ describe('A-050 · §85.2 the seven channels, none of them hue', () => {
     const full = stubSurface(400, 400)
     const fullDraws = drawBoard(full, board, VIEW, frameOf(board))
     expect(bezelDraws).toBeLessThanOrEqual(BEZEL_BOARD_DRAWS)
-    expect(fullDraws).toBeGreaterThan(bezelDraws)
+
+    // §85.3 is a claim about DETAIL and this asserted it in DRAWS, which was a proxy
+    // and has now inverted: batching §85.2's dotted substrate into one stroked path
+    // makes the instrument CHEAPER than the status light — 25 fillRects become 1 —
+    // while drawing strictly more. Geometry is the unit the claim was always about.
+    expect(full.segments.length).toBeGreaterThan(bezel.segments.length)
+    expect(fullDraws).toBeLessThan(BEZEL_BOARD_DRAWS)
   })
 })
 
@@ -221,11 +242,18 @@ describe('A-053 · §85.2 the core, which is the only thing on an empty board', 
     const surface = stubSurface(400, 400)
     const draws = drawBoard(surface, board, VIEW, frameOf(board))
 
-    // 25 substrate dots and one stroked path, and the path is the core.
-    expect(surface.paths).toBe(1)
-    expect(draws).toBe(surface.fills.length / 5 + 1)
-    const xs = surface.segments.filter((_, i) => i % 2 === 0)
-    const ys = surface.segments.filter((_, i) => i % 2 === 1)
+    // Two stroked paths now — §85.2's dotted substrate, then the core — and no fills
+    // at all, because an empty cell at this detail is an outline rather than a dot.
+    // The core is the LAST, and it is read on its own: a symmetry assertion over a
+    // pile that also holds twenty-five cells of dashes is an assertion about the
+    // board's outline, which is symmetric anyway and would pass with no core drawn.
+    expect(surface.paths).toBe(2)
+    expect(surface.fills).toHaveLength(0)
+    expect(draws).toBe(2)
+    const core = surface.strokes[surface.strokes.length - 1]?.segments ?? []
+    expect(core.length).toBeGreaterThan(0)
+    const xs = core.filter((_, i) => i % 2 === 0)
+    const ys = core.filter((_, i) => i % 2 === 1)
     expect(Math.min(...xs)).toBeLessThan(CENTRE.x)
     expect(Math.max(...xs)).toBeGreaterThan(CENTRE.x)
     // Symmetric about the core, which is §85.2's constraint on everything the machine

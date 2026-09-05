@@ -11,7 +11,7 @@
 > for a topic returns a confidently wrong answer.** Consult the owner column before any
 > section, never the first section that mentions the topic.
 
-**108 decisions · 56 supersede an earlier one · 52%.**
+**111 decisions · 58 supersede an earlier one · 52%.**
 
 That ratio is the finding, measured rather than asserted: four out of five settled
 decisions in this project overwrite one, and until §75.3 nothing recorded it but prose.
@@ -138,6 +138,9 @@ resume budget honest as this file grows.
 | the build manifest is not simulation data | build | commit 9 | commit 2 |
 | the determinism lint reads code, not prose | build | commit 9 | commit 4 |
 | a screen title is a label, its contents are prose | ui | commit 9 | — |
+| an empty cell is an outline, not a point | render | §85.2 | commit 10 |
+| an instruction is drawn larger than a readout | ui | §117.5 | commit 10 |
+| the checkpoint page states measured facts and must generate them | build | §136.5 | — |
 
 ---
 
@@ -260,7 +263,7 @@ A build-craft puzzle with real-time pressure, not a podcast survivors-like. Tags
 The projection ran a PLACE of the tray part unconditionally while `apply` resolves a MOVE first, so a carried component meant the ghost outlined the wrong footprint, the HOLDING panel named the wrong part and the AFTER line priced the wrong part's power and heat. Quietest where it was worst: a carried component still occupies its old cells until the move resolves, so a legal move onto a neighbouring cell projected as AFTER BLOCKED and then succeeded. §9's first gate reported "I could act but saw no consequence"; a consequence shown for a different act is that one turn worse, and §76.2 is explicit that placement juice is CAUSALITY rather than feel.
 
 
-### render — 17
+### render — 18
 
 **board render channels** — §85.2 *(supersedes §85.1)*
 
@@ -329,6 +332,10 @@ The wedge is FILLED as well as stroked and held for ten ticks rather than six. F
 **the heat ramp is anchored to the thresholds** — commit 10
 
 A ramp linear in `heat / meltdown` puts a fixed fraction of the span at each band, and §58.5 made every threshold pair geometry-relative — 10/22, 7/19, 7/17, and 7/19 once Ring expands — precisely so a rung means the same thing on cores whose regions differ in size. Measured on Lattice: the amber began at 8.81 against a line of 10, so the whole band between them drew overclocked and simulated safe, all run, on the surface §68 calls the product. The bands now sit either side of the overclock line by construction, so §134.2's exact-set claim holds on all six board states rather than on the one a test happened to sample.
+
+**an empty cell is an outline, not a point** — §85.2 *(supersedes commit 10)*
+
+§85.2 says an empty cell is "near-black with a faint dotted OUTLINE" and the code drew one dot at its centre — a plausible neighbour of the spec that passed every check, because §85.4 audits whether a channel survives colour loss and never whether it carries the right SHAPE. A dot marks where a cell is; an outline says a cell IS, how large it is, and where §108.3's geometry stops. It is also CHEAPER: every empty cell's dashes are one path stroked once, so the substrate is 1 draw against the 25 §39.1 budgeted, which makes the instrument fewer draws than the status light — so §85.3's claim is restated in geometry rather than in draws. The bezel keeps the dot and §86.2 does not move.
 
 
 ### field — 14
@@ -437,7 +444,7 @@ Wire, Bus and Sink held from run one; Damper and Radiator earned by two thermal 
 A two-cell conduit and nothing more. The "+1 budget" clause is cut: undefined in both its appearances and unimplementable under 0-1 BFS, which forbids the negative edge weight it would need.
 
 
-### build — 17
+### build — 18
 
 **the stack** — §19
 
@@ -507,8 +514,12 @@ Laws, decisions, strings, the asset manifest and the schedule are specification 
 
 String literals and trailing comments are stripped before the scan. `laws.ts` states the rule verbatim and `decisions.ts` records the decision that established it, and both were flagged the moment they existed — a lint that fires on the document describing the lint teaches a session to sprinkle exception comments, which is how a rule stops meaning anything.
 
+**the checkpoint page states measured facts and must generate them** — §136.5
 
-### ui — 14
+§136.5 says an artifact that is EXECUTED is generated or stamped, and the prototype page's masthead asserted "26 test files / 301 tests / 139 kB" by hand against a repository with 30, 366 and 147. The assembler now reads all three from the thing they describe, and fails if a placeholder is left unfilled — the one artifact a checkpoint is judged on was the last one still claiming its own numbers from memory.
+
+
+### ui — 15
 
 **the run clock** — §105.1 *(supersedes §3)*
 
@@ -565,6 +576,10 @@ They were the same colour at the same weight, and the cursor opened ON the core'
 **a screen title is a label, its contents are prose** — commit 9
 
 The two lists may not share an id. Found by A-044 on the day it was written: BUILD REPORT is a label the player navigates to and the narration inside it is 120 words a human writes, and they had collided on one id — which is the cheapest possible demonstration that §102.2's boundary is checkable rather than rhetorical.
+
+**an instruction is drawn larger than a readout** — §117.5 *(supersedes commit 10)*
+
+A tester reported never seeing a line that was on screen in 100% of frames. At LABEL_SCALE it was a 7x9 face in the same weight and colour as the six inspect lines and the KEY, so it read as a seventh status field — A-055's finding at a surface that is always present rather than one present in 23% of frames. The atlas is a single-colour raster, so emphasis is SIZE plus a bar in the cursor's white, and the assertion is the RELATION rather than the integer (§133.6): whatever the label scale becomes, the line that tells the player to act is larger than the lines that tell them what is true.
 
 
 ### meta — 4

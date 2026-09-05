@@ -317,11 +317,53 @@ export const drawBoard = (
   const occupied = new Set(board.placements.flatMap((p) => cellsOf(p).map(key)))
   const t = thresholds(board)
 
-  // 1. The substrate and the heat field. An empty cell is a dot; an occupied one is
-  //    a fill whose value is the DERIVED region heat centred on it (§134.2).
+  // 1. The substrate and the heat field. An empty cell is a dotted OUTLINE at full
+  //    detail and a dot at the bezel's; an occupied one is a fill whose value is the
+  //    DERIVED region heat centred on it (§134.2).
+  //
+  //    §85.2's own words are *"an empty cell is near-black with a faint dotted
+  //    OUTLINE"* and this drew a single dot in the middle of one — a plausible
+  //    neighbour of the spec, and the reason a tester who could see the dots still
+  //    reported that they could not tell what the workbench was. A dot marks WHERE a
+  //    cell is; an outline says a cell IS, how large it is, and where the board stops
+  //    — which is §108.3's per-core geometry, the thing that tells a player where
+  //    they may place at all. Twenty-five points floating in black say none of it.
+  //
+  //    It is CHEAPER than what it replaces, which is the part worth keeping: every
+  //    empty cell's dashes go into ONE path and are stroked ONCE, so the whole
+  //    substrate is **1 draw** against the 25 fillRects §39.1 budgeted for it. The
+  //    bezel keeps the dot, unchanged and still one draw per cell, because §85.3
+  //    makes that view a status light rather than an instrument and twelve dashes in
+  //    a 14.4 px cell is mush — so §86.2's measured bezel does not move.
+  if (view.detail === 'full') {
+    const empty = cells.filter((c) => !occupied.has(key(c)))
+    if (empty.length > 0) {
+      surface.setStroke(SUBSTRATE, Math.max(1, view.cell * 0.03))
+      surface.beginPath()
+      const inset = view.cell * 0.06
+      const half = view.cell / 2 - inset
+      const dash = view.cell * 0.16
+      for (const c of empty) {
+        const p = at(view, c)
+        const l = p.x - half, r = p.x + half, top = p.y - half, bot = p.y + half
+        // Three dashes an edge, at a sixth, a half and five sixths along it — so the
+        // corners stay open and the cell reads as substrate rather than as a box.
+        for (const f of [1 / 6, 3 / 6, 5 / 6]) {
+          const hx = l + (r - l) * f, vy = top + (bot - top) * f
+          surface.moveTo(hx - dash / 2, top); surface.lineTo(hx + dash / 2, top)
+          surface.moveTo(hx - dash / 2, bot); surface.lineTo(hx + dash / 2, bot)
+          surface.moveTo(l, vy - dash / 2); surface.lineTo(l, vy + dash / 2)
+          surface.moveTo(r, vy - dash / 2); surface.lineTo(r, vy + dash / 2)
+        }
+      }
+      surface.stroke()
+    }
+  }
+
   for (const c of cells) {
     const p = at(view, c)
     if (!occupied.has(key(c))) {
+      if (view.detail === 'full') continue
       surface.setFill(SUBSTRATE)
       const dot = substrateDot(view)
       surface.fillRect(p.x - dot / 2, p.y - dot / 2, dot, dot)

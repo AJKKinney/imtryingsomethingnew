@@ -26,6 +26,7 @@
  * §68.5's stop condition becomes a decision rather than a bereavement.
  */
 import { drawText, type Atlas, type Scale } from '../render/atlas.ts'
+import { GLYPH_ROWS } from '../render/face.ts'
 import { BACKGROUND, CORE_HUES, PLAYER, SUBSTRATE } from '../gen/palette.ts'
 import type { Surface } from '../render/surface.ts'
 import {
@@ -320,7 +321,15 @@ const project = (p: Prototype): Preview | undefined => {
 export const preview = project
 
 /** §104.5's eighth core hue — the brightest cool, reserved here for the cursor. */
-const CURSOR = CORE_HUES[7] ?? '#eaf6ff'
+export const CURSOR = CORE_HUES[7] ?? '#eaf6ff'
+
+/**
+ * §11's line is drawn at twice the label scale — the only emphasis a single-colour
+ * atlas has — and high enough above the board that it belongs to no panel.
+ */
+export const COACH_SCALE = 2 as const
+const COACH_Y = 12
+
 
 const box = (surface: Surface, x: number, y: number, w: number, h: number): number => {
   surface.beginPath()
@@ -394,9 +403,27 @@ export const drawPrototype = (
   // fix was eight bindings printed permanently — which is the reachability problem
   // solved and §11's *no text walls* violated in the same line. `coach` is the
   // sequence instead: one verb, chosen by what is true at the cursor, gone once used.
+  //
+  // It is drawn at TWICE the label scale with a white bar beside it, and both halves
+  // are the report rather than a preference. A tester who was handed this build said
+  // *"I never saw any tutorialization"* — and the line was on screen, correct, and
+  // measured: at LABEL_SCALE it is a 7x9 stroke face in the corner, in the same
+  // weight and colour as the six inspect lines and the KEY, so it read as another
+  // status field. §117.5 added the perceptibility half of §52.3's floor — an effect
+  // must be perceptible AS AN EVENT at the rate it occurs — and A-055 paid it once,
+  // for a firing signature that was present in 23% of frames. This is the same debt
+  // at a surface that is present in 100% of them and still not seen: **a channel is
+  // only a channel at the rate the player meets it, and it is only an instruction if
+  // it does not look like a readout.** The atlas is a single-colour raster, so
+  // emphasis cannot be colour on the glyphs; it is SIZE, and a marker drawn in the
+  // cursor's own white so the eye ties the sentence to the thing it is about.
   const line = layout.coach?.next(situationOf(p), layout.device ?? 'keyboard')
   if (line !== undefined) {
-    draws += drawText(surface, atlas, `${line.key} ${text(line.verb)}`, s, v.x, 14)
+    surface.setFill(CURSOR)
+    surface.fillRect(v.x, COACH_Y, 5, GLYPH_ROWS * COACH_SCALE)
+    draws += 1
+    draws += drawText(
+      surface, atlas, `${line.key} ${text(line.verb)}`, COACH_SCALE, v.x + 13, COACH_Y)
   }
 
   // ── the cursor, and the ghost of what a confirm would do ────────────────────
@@ -453,6 +480,16 @@ export const drawPrototype = (
   }
 
   // ── §69.3's six lines, unchanged: the state as it IS ────────────────────────
+  //
+  // With the header they never had. `hud.here` has been in §102.2's label table since
+  // it was written and was drawn by nothing, so the panel that answers *what is true
+  // at the cursor* sat unlabelled between two panels that are labelled — HOLDING above
+  // it and KEY below — and a reader had no way to know which of the three the numbers
+  // belonged to. That is §109.7's disclosure rule passing on a technicality: every
+  // quantity here IS shown, and a quantity shown without saying what it is about is a
+  // quantity withheld by other means.
+  draws += drawText(surface, atlas, `${text('here')} ${p.cursor.x},${p.cursor.y}`,
+    s, px, layout.panelY - 14)
   for (const [i, line] of inspect(p, frame).entries()) {
     draws += drawText(surface, atlas, line, s, px, layout.panelY + i * 12)
   }

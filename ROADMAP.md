@@ -181,13 +181,13 @@ the fight's only end condition, and a competent player never learns it exists.
 ## Assertion coverage
 
 ```
-phase 1: 30/31 implemented · 31 planned (seeded)
+phase 1: 31/32 implemented · 32 planned (seeded)
 phase 2: 23/34 implemented · 44 planned (34 seeded)
 phase 3: 0/0 implemented · 148 planned (0 seeded)
 phase 4: 0/0 implemented · 26 planned (0 seeded)
 phase 5: 0/0 implemented · 18 planned (0 seeded)
 phase 6: 0/0 implemented · 12 planned (0 seeded)
-total:   53/65 implemented · 279 planned
+total:   54/66 implemented · 280 planned
 ```
 
 <!-- END GENERATED: roadmap-coverage -->
@@ -496,6 +496,48 @@ the simulation can see and it never blocks an input. It is §69.6's one honest i
 *the prompt fires on a placement that visibly has a consequence* — generalised from one beat
 to the six verbs the board actually has, and it obeys §69.2 exactly: **the line names a verb
 the player already possesses, and disappears the moment they possess it in the other sense.**
+
+**And the tester's answer to all of that: *"I can't tell what the workbench is doing still
+and I never saw any tutorialization."*** Two findings, neither of them a missing feature, and
+the second is the one worth leading with: **the line was on screen, correct, and measured.**
+It was drawn every frame, at the top-left, exactly as designed. This was the first pass to
+answer a report by opening the build in a browser and **looking at it** rather than by reading
+the source, and both causes were visible in the first screenshot.
+
+| | What was wrong | How it was measured |
+|---|---|---|
+| **A-066** | §85.2's own words are *"an empty cell is near-black with a faint dotted **outline**"*, and the code drew **a single dot at the cell's centre** — a plausible neighbour of the spec that every existing check passed | 25 points floating in black: the tester could see the dots and **could not see a cell, its size, or where the board stopped** |
+| | The instruction was drawn at `LABEL_SCALE`, in the same weight and colour as the six inspect lines and the KEY | on screen in **100% of frames** and read as a seventh status field |
+| | §102.2's `hud.here` had been in the label table since it was written and was **drawn by nothing**, so the panel answering *what is true at the cursor* sat unlabelled between two labelled ones | three blocks of identical small text, and no way to know which the numbers belonged to |
+| | The page's own masthead asserted **26 test files · 301 tests · 139 kB** by hand | against **30 · 366 · 147** — §136.5's law unpaid at the one artifact a checkpoint is judged on |
+
+**The first row is §85.4's blind spot, and it is the same blind spot A-054 found in the
+face.** That check audits whether a channel **survives colour loss**; it has never audited
+whether a channel **carries the right shape**. A dot marks *where* a cell is. An outline says
+a cell **is**, how large it is, and where the board stops — which is §108.3's per-core
+geometry, the thing that tells a player where they may place at all.
+
+**The second row is A-055 one surface further on**, and that is the finding this pass
+contributes. A-055 established that a firing signature present in **23% of frames** is not a
+channel, and paid §117.5's perceptibility clause against a render constant for the first
+time. This is the same debt at a surface present in **100%** of them: **a channel is only a
+channel at the rate the player meets it, and it is only an instruction if it does not look
+like a readout.** The atlas is a single-colour raster, so emphasis cannot be hue on the
+glyphs — it is **size**, plus a bar in the cursor's own white — and the assertion states the
+**relation** (the instruction is strictly larger than every label that reports) rather than
+the integer, per §133.6.
+
+**The outline is cheaper than the dot it replaces, which inverted a proxy.** Every empty
+cell's dashes go into **one path, stroked once**, so the substrate is **1 draw against the 25
+§39.1 budgeted** — and §85.3's *instrument versus status light* had been asserted as
+`fullDraws > bezelDraws`, which is now false while the claim is more true than ever. The
+band is restated in **geometry**, which is the unit §85.3 was always about; the bezel keeps
+its dot and §86.2's measurement does not move.
+
+**Each fix was verified by reverting it**, and by a second screenshot rather than only by a
+test: three tests fail on the pre-fix source and pass on the fixed one, and the picture the
+tester will open now shows a 5×5 grid of cells with `▌ENTER PLACE` above it at twice the size
+of anything else on the canvas.
 
 
 ---
